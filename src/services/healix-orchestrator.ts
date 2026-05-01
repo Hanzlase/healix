@@ -55,7 +55,8 @@ export async function runHealixPipeline(params: {
       repo: params.repo,
       baseSha: params.commitSha,
       rootCause: root.root_cause,
-      patch,
+      affectedFile: root.affected_file,
+      patch: patch.patch,
       reviewer: review,
     });
     prUrl = pr.prUrl;
