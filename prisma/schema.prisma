@@ -1,0 +1,73 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum FailureStatus {
+  pending
+  analyzed
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String?  @map("password_hash")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  repositories Repository[]
+
+  @@map("users")
+}
+
+model Repository {
+  id                   String   @id @default(cuid())
+  userId               String   @map("user_id")
+  repoName             String   @map("repo_name")
+  githubInstallationId String?  @map("github_installation_id")
+  createdAt            DateTime @default(now()) @map("created_at")
+
+  user     User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  failures PipelineFailure[]
+
+  @@index([userId])
+  @@unique([userId, repoName])
+  @@map("repositories")
+}
+
+model PipelineFailure {
+  id        String       @id @default(cuid())
+  repoId    String       @map("repo_id")
+  commitSha String       @map("commit_sha")
+  logs      String?
+  status    FailureStatus @default(pending)
+  createdAt DateTime     @default(now()) @map("created_at")
+
+  repository  Repository    @relation(fields: [repoId], references: [id], onDelete: Cascade)
+  analysisRuns AnalysisRun[]
+
+  @@index([repoId])
+  @@index([commitSha])
+  @@map("pipeline_failures")
+}
+
+model AnalysisRun {
+  id         String   @id @default(cuid())
+  failureId  String   @map("failure_id")
+  rootCause  String   @map("root_cause")
+  category   String
+  confidence Float
+  patch      String?  // unified diff
+  reviewStatus String? @map("review_status")
+  prLink     String?  @map("pr_link")
+  executionTimeMs Int? @map("execution_time_ms")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  failure PipelineFailure @relation(fields: [failureId], references: [id], onDelete: Cascade)
+
+  @@index([failureId])
+  @@map("analysis_runs")
+}
