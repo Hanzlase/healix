@@ -3,28 +3,19 @@ import { prisma } from '@/lib/prisma';
 
 export async function GET() {
   try {
-    const totalRuns = await prisma.analysisRun.count();
-    const approvedRuns = await prisma.analysisRun.count({
-      where: { reviewStatus: 'approved' },
-    });
-    
-    const avgExecutionTime = await prisma.analysisRun.aggregate({
-      _avg: {
-        executionTimeMs: true,
-      },
-    });
-
-    const avgConfidence = await prisma.analysisRun.aggregate({
-      _avg: {
-        confidence: true,
-      },
-    });
-
-    const prsCreated = await prisma.analysisRun.count({
-      where: {
-        prLink: { not: null },
-      },
-    });
+    const [
+      totalRuns,
+      approvedRuns,
+      avgExecutionTime,
+      avgConfidence,
+      prsCreated,
+    ] = await Promise.all([
+      prisma.analysisRun.count(),
+      prisma.analysisRun.count({ where: { reviewStatus: 'approved' } }),
+      prisma.analysisRun.aggregate({ _avg: { executionTimeMs: true } }),
+      prisma.analysisRun.aggregate({ _avg: { confidence: true } }),
+      prisma.analysisRun.count({ where: { prLink: { not: null } } }),
+    ]);
 
     const successRate = totalRuns > 0 ? (approvedRuns / totalRuns) * 100 : 0;
 
@@ -32,12 +23,12 @@ export async function GET() {
       totalRuns,
       approvedRuns,
       successRate: Math.round(successRate),
-      avgExecutionTimeMs: Math.round(avgExecutionTime._avg.executionTimeMs || 0),
-      avgConfidence: (avgConfidence._avg.confidence || 0).toFixed(2),
+      avgExecutionTimeMs: Math.round(avgExecutionTime._avg.executionTimeMs ?? 0),
+      avgConfidence: ((avgConfidence._avg.confidence ?? 0) * 100).toFixed(1),
       prsCreated,
     });
   } catch (error) {
-    console.error('Failed to fetch stats:', error);
+    console.error('[stats] Failed to fetch stats:', error);
     return NextResponse.json({ error: 'Failed to fetch stats' }, { status: 500 });
   }
 }

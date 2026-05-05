@@ -22,7 +22,12 @@ export const env = (() => {
 
     GEMINI_API_KEY: z.string().min(1),
 
+    GROQ_API_KEY: z.string().min(1),
+
     AUTH_CREDENTIALS_ENABLED: boolish,
+
+    // Optional: auto-trigger full pipeline on webhook (default: true)
+    AUTO_HEAL_ON_WEBHOOK: boolish,
   });
 
   const parsed = schema.safeParse(process.env);

@@ -1,6 +1,6 @@
 import type { AiReadyContext, GithubContext } from '@/lib/types';
 
-const MAX_LOG_CHARS = 18_000; // keep prompt small-ish
+const MAX_LOG_CHARS = 18_000;
 
 const noisePatterns: RegExp[] = [
   /^\s*Run \S+/i,
@@ -11,16 +11,22 @@ const noisePatterns: RegExp[] = [
   /^\s*Added \d+ packages/i,
   /^\s*npm notice/i,
   /^\s*npm warn/i,
+  /^\s*\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+Z\s*$/,  // bare timestamps
+  /^\s*##\[group\]/i,
+  /^\s*##\[endgroup\]/i,
+  /^\s*##\[debug\]/i,
 ];
 
-const errorLike = /(error|exception|failed|fatal|segmentation fault|traceback)/i;
+const errorLike = /(error|exception|failed|fatal|segmentation fault|traceback|abort|panic|critical)/i;
 
 function isNoise(line: string) {
   return noisePatterns.some((p) => p.test(line));
 }
 
 function extractFilePaths(text: string): string[] {
-  const matches = text.match(/([A-Za-z]:\\[^\s:]+\.(ts|tsx|js|jsx|json|yml|yaml|md))|((?:src|app|pages|lib)\/[^\s:]+\.(ts|tsx|js|jsx|json))/g);
+  const matches = text.match(
+    /([A-Za-z]:\\[^\s:]+\.(ts|tsx|js|jsx|json|yml|yaml|md|py|go|rb|java|cs|rs))|((src|app|pages|lib|test|tests|spec|pkg|cmd)\/[^\s:]+\.(ts|tsx|js|jsx|json|py|go|rb|java|cs|rs))/g
+  );
   return Array.from(new Set((matches ?? []).map((m) => m.replace(/\\/g, '/')))).slice(0, 50);
 }
 
@@ -31,7 +37,8 @@ function extractStackTraces(lines: string[]): string[] {
   const isStackLine = (l: string) =>
     /^\s*at\s+.+\(.+\)$/.test(l) ||
     /^\s*at\s+.+$/.test(l) ||
-    /^\s*File ".+", line \d+/.test(l);
+    /^\s*File ".+", line \d+/.test(l) ||
+    /^\s+in\s+.+$/.test(l);
 
   for (const line of lines) {
     if (isStackLine(line)) {
@@ -49,30 +56,41 @@ function extractStackTraces(lines: string[]): string[] {
   return traces.slice(0, 10);
 }
 
+/**
+ * Strips the GitHub Actions timestamp prefix from log lines.
+ * Format: "2024-01-15T10:23:45.1234567Z " or "2024-01-15T10:23:45Z "
+ */
+function stripTimestamp(line: string): string {
+  return line.replace(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z\s/, '');
+}
+
 export function toAiReadyContext(ctx: GithubContext): AiReadyContext {
-  const lines = ctx.logs.split(/\r?\n/);
+  const rawLines = ctx.logs.split(/\r?\n/);
 
   const kept: string[] = [];
   const keyErrors: string[] = [];
 
-  for (const raw of lines) {
-    const line = raw.slice(0, 4000); // avoid pathological lines
-    if (!line.trim()) continue;
-    if (isNoise(line)) continue;
+  for (const raw of rawLines) {
+    const clean = stripTimestamp(raw).slice(0, 4000); // strip GH timestamps + cap line length
+    if (!clean.trim()) continue;
+    if (isNoise(clean)) continue;
 
-    if (errorLike.test(line)) {
-      keyErrors.push(line.trim());
-      kept.push(line);
+    if (errorLike.test(clean)) {
+      keyErrors.push(clean.trim());
+      kept.push(clean);
       continue;
     }
 
-    // Keep some context around errors by retaining non-noise lines near error-like blocks
-    if (kept.length && kept.length < 2000) kept.push(line);
+    // Keep context lines up to reasonable size
+    if (kept.length < 2000) kept.push(clean);
   }
 
   const truncatedLog = kept.join('\n').slice(0, MAX_LOG_CHARS);
 
-  const filePaths = Array.from(new Set([...(ctx.files ?? []), ...extractFilePaths(truncatedLog)])).slice(0, 50);
+  const filePaths = Array.from(
+    new Set([...(ctx.files ?? []), ...extractFilePaths(truncatedLog)])
+  ).slice(0, 50);
+
   const stackTraces = extractStackTraces(kept);
 
   return {

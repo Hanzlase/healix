@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma';
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
+    
     const failureId = searchParams.get('failureId');
 
     const runs = await prisma.analysisRun.findMany({
