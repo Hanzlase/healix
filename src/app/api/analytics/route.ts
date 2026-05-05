@@ -1,8 +1,30 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
+    const session = await getServerSession(authOptions);
+    const { searchParams } = new URL(req.url);
+    const guestReposParam = searchParams.get('repos');
+
+    let runClause = {};
+    let failureClause = {};
+    if (session?.user && (session.user as any).id) {
+      runClause = { failure: { repository: { userId: (session.user as any).id } } };
+      failureClause = { repository: { userId: (session.user as any).id } };
+    } else if (guestReposParam) {
+      const repos = guestReposParam.split(',');
+      const systemEmail = 'system@healix.local';
+      const sysUser = await prisma.user.findUnique({ where: { email: systemEmail } });
+      if (!sysUser) return NextResponse.json({ totalFailures: 0, totalRuns: 0, approvedRuns: 0, rejectedRuns: 0, successRate: 0, rejectionRate: 0, avgExecutionTimeMs: 0, avgConfidence: '0.0', prsCreated: 0, categoryBreakdown: {}, riskLevelBreakdown: {} });
+      runClause = { failure: { repository: { userId: sysUser.id, repoName: { in: repos } } } };
+      failureClause = { repository: { userId: sysUser.id, repoName: { in: repos } } };
+    } else {
+      return NextResponse.json({ totalFailures: 0, totalRuns: 0, approvedRuns: 0, rejectedRuns: 0, successRate: 0, rejectionRate: 0, avgExecutionTimeMs: 0, avgConfidence: '0.0', prsCreated: 0, categoryBreakdown: {}, riskLevelBreakdown: {} });
+    }
+
     const [
       totalFailures,
       totalRuns,
@@ -14,22 +36,23 @@ export async function GET() {
       categoryGroups,
       riskGroups,
     ] = await Promise.all([
-      prisma.pipelineFailure.count(),
-      prisma.analysisRun.count(),
-      prisma.analysisRun.count({ where: { reviewStatus: 'approved' } }),
-      prisma.analysisRun.count({ where: { reviewStatus: 'rejected' } }),
-      prisma.analysisRun.aggregate({ _avg: { executionTimeMs: true } }),
-      prisma.analysisRun.aggregate({ _avg: { confidence: true } }),
-      prisma.analysisRun.count({ where: { prLink: { not: null } } }),
+      prisma.pipelineFailure.count({ where: failureClause }),
+      prisma.analysisRun.count({ where: runClause }),
+      prisma.analysisRun.count({ where: { ...runClause, reviewStatus: 'approved' } }),
+      prisma.analysisRun.count({ where: { ...runClause, reviewStatus: 'rejected' } }),
+      prisma.analysisRun.aggregate({ where: runClause, _avg: { executionTimeMs: true } }),
+      prisma.analysisRun.aggregate({ where: runClause, _avg: { confidence: true } }),
+      prisma.analysisRun.count({ where: { ...runClause, prLink: { not: null } } }),
       prisma.analysisRun.groupBy({
         by: ['category'],
         _count: { category: true },
+        where: runClause,
         orderBy: { _count: { category: 'desc' } },
       }),
       prisma.analysisRun.groupBy({
         by: ['reviewRiskLevel'],
         _count: { reviewRiskLevel: true },
-        where: { reviewRiskLevel: { not: null } },
+        where: { ...runClause, reviewRiskLevel: { not: null } },
         orderBy: { _count: { reviewRiskLevel: 'desc' } },
       }),
     ]);

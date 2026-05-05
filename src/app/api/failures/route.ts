@@ -1,16 +1,35 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
 
 export async function GET(req: NextRequest) {
   try {
+    const session = await getServerSession(authOptions);
     const { searchParams } = new URL(req.url);
     const status = searchParams.get('status');
     const limit = Math.min(Number(searchParams.get('limit') ?? 20), 100);
     const cursor = searchParams.get('cursor');
+    const guestReposParam = searchParams.get('repos');
+
+    let userClause = {};
+    if (session?.user && (session.user as any).id) {
+      userClause = { repository: { userId: (session.user as any).id } };
+    } else if (guestReposParam) {
+      const repos = guestReposParam.split(',');
+      const systemEmail = 'system@healix.local';
+      const sysUser = await prisma.user.findUnique({ where: { email: systemEmail } });
+      if (!sysUser) return NextResponse.json({ failures: [], nextCursor: null });
+      userClause = { repository: { userId: sysUser.id, repoName: { in: repos } } };
+    } else {
+      // Guest with no repos, return empty
+      return NextResponse.json({ failures: [], nextCursor: null });
+    }
 
     const failures = await prisma.pipelineFailure.findMany({
       where: {
         ...(status ? { status: status as any } : {}),
+        ...userClause,
       },
       orderBy: { createdAt: 'desc' },
       take: limit,

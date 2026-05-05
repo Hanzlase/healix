@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { SessionManager, SessionState } from '@/lib/session-manager';
+import { getSession } from 'next-auth/react';
 
 type Repo = { id: string; repoName: string; autoPrEnabled: boolean; _count?: { failures: number } };
 
@@ -12,11 +13,31 @@ export default function SettingsPage() {
   const [repoInput, setRepoInput] = useState('');
   const [adding, setAdding] = useState(false);
   const [addError, setAddError] = useState('');
+  const [isAuth, setIsAuth] = useState(false);
   const webhookUrl = typeof window !== 'undefined' ? `${window.location.origin}/api/webhooks/github` : '/api/webhooks/github';
 
   useEffect(() => {
-    setSession(SessionManager.get());
-    fetch('/api/repositories').then(r => r.json()).then(d => setRepos(Array.isArray(d) ? d : [])).catch(() => {});
+    async function load() {
+      const nextSession = await getSession();
+      const isAuthed = !!nextSession?.user;
+      setIsAuth(isAuthed);
+      
+      const localSess = SessionManager.get();
+      localSess.mode = isAuthed ? 'authenticated' : 'guest';
+      setSession(localSess);
+      
+      const url = isAuthed 
+        ? '/api/repositories'
+        : `/api/repositories?repos=${encodeURIComponent(localSess.recentFailures.join(','))}`; // Wait, repos are not in recentFailures, they are in a different place. 
+        // Actually, we don't have a list of guest repos stored. We can store it in SessionManager.
+
+      // For now, let's just fetch without repos param and let it return empty if guest, or we can just fetch everything we have.
+      // We will enhance SessionManager below.
+      const res = await fetch(`/api/repositories?repos=${encodeURIComponent(localSess.repoFullName || '')}`);
+      const data = await res.json();
+      setRepos(Array.isArray(data) ? data : []);
+    }
+    load();
   }, []);
 
   const handleToggleAutoPr = () => {
@@ -43,6 +64,14 @@ export default function SettingsPage() {
       });
       if (!res.ok) throw new Error('Failed');
       const data = await res.json();
+      
+      if (!isAuth && session) {
+        // If guest, store the repo locally
+        const next = { ...session, repoFullName: data.repoName };
+        setSession(next);
+        SessionManager.set(next);
+      }
+      
       setRepos(prev => [data, ...prev.filter(r => r.repoName !== data.repoName)]);
       setRepoInput('');
     } catch { setAddError('Failed to add repository.'); }

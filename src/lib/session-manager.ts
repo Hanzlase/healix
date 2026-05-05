@@ -9,6 +9,9 @@ export type SessionState = {
   recentFailures: string[];   // failure IDs
   analysisHistory: AnalysisHistoryItem[];
   autoPrEnabled: boolean;
+  failuresCache?: any[];
+  statsCache?: any;
+  analyticsCache?: any;
 };
 
 export type AnalysisHistoryItem = {
@@ -31,6 +34,9 @@ export const INITIAL_STATE: SessionState = {
   recentFailures: [],
   analysisHistory: [],
   autoPrEnabled: true,
+  failuresCache: [],
+  statsCache: null,
+  analyticsCache: null,
 };
 
 export const SessionManager = {

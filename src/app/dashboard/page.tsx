@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useState, useCallback } from 'react';
 import { SessionManager } from '@/lib/session-manager';
+import { getSession } from 'next-auth/react';
 
 type AnalysisRun = {
   id: string; failureId: string; rootCause: string; category: string;
@@ -52,26 +53,68 @@ export default function DashboardPage() {
 
   const fetchAll = useCallback(async () => {
     try {
+      const nextSession = await getSession();
+      const isAuthed = !!nextSession?.user;
+      const localSess = SessionManager.get();
+
+      // For guests, load from cache first to be instant
+      if (!isAuthed && failures.length === 0 && localSess.failuresCache?.length) {
+        setFailures(localSess.failuresCache);
+        if (localSess.statsCache) setStats(localSess.statsCache);
+        if (localSess.analyticsCache) setAnalytics(localSess.analyticsCache);
+        if (localSess.failuresCache.length > 0 && !selectedId) {
+          setSelectedId(localSess.failuresCache[0].id);
+        }
+      }
+
+      const urlSuffix = isAuthed ? '' : `?repos=${encodeURIComponent(localSess.repoFullName || '')}`;
+
       const [fRes, sRes, aRes] = await Promise.all([
-        fetch('/api/failures'),
-        fetch('/api/stats'),
-        fetch('/api/analytics'),
+        fetch(`/api/failures${urlSuffix}`),
+        fetch(`/api/stats${urlSuffix}`),
+        fetch(`/api/analytics${urlSuffix}`),
       ]);
       const fData = await fRes.json();
       const sData = await sRes.json();
       const aData = await aRes.json();
 
-      const items: FailureItem[] = fData.failures ?? [];
+      let items: FailureItem[] = fData.failures ?? [];
+
+      if (!isAuthed) {
+        // Persist to localStorage for guest
+        const newIds = items.map(f => f.id);
+        SessionManager.update({ 
+          recentFailures: newIds,
+          failuresCache: items,
+          statsCache: sData,
+          analyticsCache: aData
+        });
+      }
+
       setFailures(items);
       setStats(sData);
       setAnalytics(aData);
-      if (items.length > 0 && !selectedId) setSelectedId(items[0].id);
+      
+      // Keep selectedId if possible, else select first
+      if (items.length > 0 && !selectedId) {
+        setSelectedId(items[0].id);
+      }
     } catch (e) {
       console.error(e);
+      // Fallback to localStorage if guest and failed to fetch
+      const localSess = SessionManager.get();
+      if (localSess.mode === 'guest' && failures.length === 0 && localSess.failuresCache?.length) {
+        setFailures(localSess.failuresCache);
+        if (localSess.statsCache) setStats(localSess.statsCache);
+        if (localSess.analyticsCache) setAnalytics(localSess.analyticsCache);
+        if (localSess.failuresCache.length > 0 && !selectedId) {
+          setSelectedId(localSess.failuresCache[0].id);
+        }
+      }
     } finally {
       setLoading(false);
     }
-  }, [selectedId]);
+  }, [selectedId, failures.length]);
 
   useEffect(() => {
     fetchAll();
