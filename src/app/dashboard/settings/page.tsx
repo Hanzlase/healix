@@ -58,13 +58,29 @@ export default function SettingsPage() {
   const handleExport = () => SessionManager.exportData();
 
   const handleAddRepo = async () => {
-    if (!repoInput.includes('/')) { setAddError('Format: owner/repo'); return; }
+    let cleanRepo = repoInput.trim();
+    if (cleanRepo.startsWith('http')) {
+      try {
+        const url = new URL(cleanRepo);
+        const pathParts = url.pathname.replace(/^\/|\/$/g, '').split('/');
+        if (pathParts.length >= 2) {
+          cleanRepo = `${pathParts[0]}/${pathParts[1].replace('.git', '')}`;
+        }
+      } catch (e) {
+        // ignore
+      }
+    }
+    
+    if (!cleanRepo.includes('/') || cleanRepo.split('/').length !== 2) { 
+      setAddError('Format: owner/repo or full GitHub URL'); 
+      return; 
+    }
     setAdding(true); setAddError(''); setAddSuccess('');
     try {
       const res = await fetch('/api/repositories', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ repoFullName: repoInput, autoPrEnabled: session?.autoPrEnabled ?? true }),
+        body: JSON.stringify({ repoFullName: cleanRepo, autoPrEnabled: session?.autoPrEnabled ?? true }),
       });
       if (!res.ok) throw new Error('Failed');
       const data = await res.json();
@@ -77,7 +93,7 @@ export default function SettingsPage() {
       
       setRepos(prev => [data, ...prev.filter(r => r.repoName !== data.repoName)]);
       setRepoInput('');
-      setAddSuccess(`✓ ${repoInput} connected successfully!`);
+      setAddSuccess(`✓ ${cleanRepo} connected successfully!`);
       setTimeout(() => setAddSuccess(''), 3000);
     } catch { setAddError('Failed to add repository.'); }
     finally { setAdding(false); }
