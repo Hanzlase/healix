@@ -64,7 +64,8 @@ export async function POST(req: Request) {
 
   // Acknowledge non-workflow events immediately
   if (event !== 'workflow_run') {
-    return NextResponse.json({ ok: true, ignored: true }, { status: 200 });
+    console.log(`[webhook] Ignored event type: ${event}`);
+    return NextResponse.json({ ok: true, ignored: true, reason: `Not a workflow_run event (was ${event})` }, { status: 200 });
   }
 
   const rawBody = await req.text();
@@ -77,6 +78,7 @@ export async function POST(req: Request) {
   }
 
   if (!verifySignature(rawBody, signature, secret)) {
+    console.error('[webhook] Signature verification failed');
     return NextResponse.json({ ok: false, error: 'Invalid signature' }, { status: 401 });
   }
 
@@ -85,7 +87,8 @@ export async function POST(req: Request) {
 
   // Ignore non-failure or incomplete events
   if (!parsed) {
-    return NextResponse.json({ ok: true, ignored: true }, { status: 200 });
+    console.log(`[webhook] Ignored workflow_run. Conclusion: ${body?.workflow_run?.conclusion}, Action: ${body?.action}`);
+    return NextResponse.json({ ok: true, ignored: true, reason: 'Not a failure conclusion or missing fields' }, { status: 200 });
   }
 
   // Upsert a system user to own webhook-triggered failures
