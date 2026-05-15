@@ -3,6 +3,8 @@ import crypto from 'crypto';
 import { prisma } from '@/lib/prisma';
 import type { GithubFailureEvent } from '@/lib/types';
 
+export const maxDuration = 60; // 60 seconds limit for hobby tier
+
 function verifySignature(rawBody: string, signatureHeader: string | null, secret: string): boolean {
   if (!signatureHeader) return false;
   const [algo, theirSig] = signatureHeader.split('=');
@@ -116,31 +118,35 @@ export async function POST(req: Request) {
   });
 
   // ── Auto-trigger the full healing pipeline ──────────────────────────────
-  // We fire-and-forget using a background task. NextResponse is returned
-  // immediately so GitHub doesn't time out the webhook (10s limit).
+  // We use `after` to run the task in the background on Vercel after the response is sent.
   const autoHeal = (process.env.AUTO_HEAL_ON_WEBHOOK ?? 'true') !== 'false';
 
   if (autoHeal) {
-    // Dynamic import keeps the orchestrator out of the webhook parse phase
-    import('@/services/healix-orchestrator')
-      .then(({ runHealixPipeline }) =>
-        runHealixPipeline({
-          failureId: failure.id,
-          owner: parsed.owner,
-          repo: parsed.repoName,
-          workflowRunId: parsed.workflowRunId,
-          commitSha: parsed.commitSha,
-        })
-      )
-      .then((result) => {
-        console.log(
-          `[webhook] Pipeline complete for ${failure.id}: ` +
-          `${result.review.status} | PR: ${result.prUrl ?? 'none'}`
-        );
-      })
-      .catch((err) => {
-        console.error(`[webhook] Pipeline failed for ${failure.id}:`, err);
+    import('next/server').then(({ after }) => {
+      after(() => {
+        import('@/services/healix-orchestrator')
+          .then(({ runHealixPipeline }) =>
+            runHealixPipeline({
+              failureId: failure.id,
+              owner: parsed.owner,
+              repo: parsed.repoName,
+              workflowRunId: parsed.workflowRunId,
+              commitSha: parsed.commitSha,
+            })
+          )
+          .then((result) => {
+            console.log(
+              `[webhook] Pipeline complete for ${failure.id}: ` +
+              `${result.review.status} | PR: ${result.prUrl ?? 'none'}`
+            );
+          })
+          .catch((err) => {
+            console.error(`[webhook] Pipeline failed for ${failure.id}:`, err);
+          });
       });
+    }).catch(err => {
+        console.error('Failed to import next/server after', err)
+    });
   }
 
   return NextResponse.json(

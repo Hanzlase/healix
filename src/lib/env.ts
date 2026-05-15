@@ -4,8 +4,7 @@ const boolish = z
   .string()
   .optional()
   .transform((v) => (v ?? '').toLowerCase())
-  .pipe(z.enum(['true', 'false', '']).optional())
-  .transform((v) => v === 'true');
+  .pipe(z.enum(['true', 'false', '']).transform((v) => v === 'true'));
 
 export const env = (() => {
   const schema = z.object({
@@ -18,6 +17,14 @@ export const env = (() => {
     GITHUB_CLIENT_SECRET: z.string().optional(),
 
     GITHUB_WEBHOOK_SECRET: z.string().min(1),
+    // For GitHub App auth (recommended for public deployments)
+    GITHUB_APP_ID: z.string().min(1).optional(),
+    // PEM private key. Accept either raw PEM with newlines or a single-line string with \n escapes.
+    GITHUB_APP_PRIVATE_KEY: z.string().min(1).optional(),
+    // Optional convenience for building the install URL in UI (e.g. "healix-bot")
+    GITHUB_APP_SLUG: z.string().min(1).optional(),
+
+    // Legacy fallback token (optional)
     GITHUB_TOKEN: z.string().optional(),
 
     GEMINI_API_KEY: z.string().min(1),

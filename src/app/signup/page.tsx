@@ -2,9 +2,12 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { signIn } from 'next-auth/react';
 
-export default function SignInPage() {
+export default function SignUpPage() {
+  const router = useRouter();
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -14,12 +17,32 @@ export default function SignInPage() {
     e.preventDefault();
     setLoading(true);
     setError('');
-    const res = await signIn('credentials', { email, password, redirect: false });
-    if (res?.error) {
-      setError('Invalid email or password.');
+    
+    try {
+      const res = await fetch('/api/auth/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, email, password }),
+      });
+      
+      const data = await res.json();
+      
+      if (!res.ok) {
+        setError(data.error || 'Something went wrong.');
+        setLoading(false);
+      } else {
+        // Automatically sign in after sign up
+        const signInRes = await signIn('credentials', { email, password, redirect: false });
+        if (signInRes?.error) {
+          setError('Account created, but could not sign in automatically.');
+          setLoading(false);
+        } else {
+          router.push('/dashboard');
+        }
+      }
+    } catch (err) {
+      setError('An error occurred during sign up.');
       setLoading(false);
-    } else {
-      window.location.href = '/dashboard';
     }
   };
 
@@ -35,7 +58,7 @@ export default function SignInPage() {
             </div>
             <span className="text-2xl font-black tracking-tight text-slate-900">Healix</span>
           </Link>
-          <p className="text-slate-500 text-sm mt-4">Sign in to sync your pipeline data across devices</p>
+          <p className="text-slate-500 text-sm mt-4">Create an account to start using Healix</p>
         </div>
 
         <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-8">
@@ -56,35 +79,32 @@ export default function SignInPage() {
 
           <form onSubmit={handleCredentials} className="space-y-4">
             <div>
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">Name</label>
+              <input type="text" value={name} onChange={e => setName(e.target.value)} required
+                className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 bg-slate-50"/>
+            </div>
+            <div>
               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">Email</label>
               <input type="email" value={email} onChange={e => setEmail(e.target.value)} required
                 className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 bg-slate-50"/>
             </div>
             <div>
               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">Password</label>
-              <input type="password" value={password} onChange={e => setPassword(e.target.value)} required
+              <input type="password" value={password} onChange={e => setPassword(e.target.value)} required minLength={8}
                 className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 bg-slate-50"/>
             </div>
             {error && <p className="text-xs text-rose-500 font-semibold">{error}</p>}
             <button type="submit" disabled={loading}
               className="w-full py-3.5 bg-blue-600 text-white rounded-2xl font-black text-sm hover:bg-blue-700 transition-all disabled:opacity-50 shadow-lg shadow-blue-100">
-              {loading ? 'Signing in…' : 'Sign In'}
+              {loading ? 'Creating account…' : 'Create Account'}
             </button>
           </form>
 
-          <div className="mt-6 pt-6 border-t border-slate-100 text-center space-y-3">
-            <div>
-              <p className="text-xs text-slate-400 mb-1.5">Don't have an account?</p>
-              <Link href="/signup" className="text-sm font-black text-blue-600 hover:text-blue-700 transition-colors">
-                Create an account
-              </Link>
-            </div>
-            <div>
-              <p className="text-xs text-slate-400 mb-1.5">Or try without an account</p>
-              <Link href="/dashboard" className="text-sm font-black text-slate-600 hover:text-slate-800 transition-colors">
-                Continue as Guest →
-              </Link>
-            </div>
+          <div className="mt-6 pt-6 border-t border-slate-100 text-center">
+            <p className="text-xs text-slate-400 mb-3">Already have an account?</p>
+            <Link href="/signin" className="text-sm font-black text-blue-600 hover:text-blue-700 transition-colors">
+              Sign In →
+            </Link>
           </div>
         </div>
       </div>

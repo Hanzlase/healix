@@ -57,16 +57,6 @@ export default function DashboardPage() {
       const isAuthed = !!nextSession?.user;
       const localSess = SessionManager.get();
 
-      // For guests, load from cache first to be instant
-      if (!isAuthed && failures.length === 0 && localSess.failuresCache?.length) {
-        setFailures(localSess.failuresCache);
-        if (localSess.statsCache) setStats(localSess.statsCache);
-        if (localSess.analyticsCache) setAnalytics(localSess.analyticsCache);
-        if (localSess.failuresCache.length > 0 && !selectedId) {
-          setSelectedId(localSess.failuresCache[0].id);
-        }
-      }
-
       const urlSuffix = isAuthed ? '' : `?repos=${encodeURIComponent(localSess.repoFullName || '')}`;
 
       const [fRes, sRes, aRes] = await Promise.all([
@@ -78,13 +68,11 @@ export default function DashboardPage() {
       const sData = await sRes.json();
       const aData = await aRes.json();
 
-      let items: FailureItem[] = fData.failures ?? [];
+      const items: FailureItem[] = fData.failures ?? [];
 
       if (!isAuthed) {
-        // Persist to localStorage for guest
-        const newIds = items.map(f => f.id);
         SessionManager.update({ 
-          recentFailures: newIds,
+          recentFailures: items.map(f => f.id),
           failuresCache: items,
           statsCache: sData,
           analyticsCache: aData
@@ -94,33 +82,29 @@ export default function DashboardPage() {
       setFailures(items);
       setStats(sData);
       setAnalytics(aData);
-      
-      // Keep selectedId if possible, else select first
-      if (items.length > 0 && !selectedId) {
-        setSelectedId(items[0].id);
-      }
+      setSelectedId(prev => {
+        if (prev && items.find(f => f.id === prev)) return prev;
+        return items.length > 0 ? items[0].id : null;
+      });
     } catch (e) {
       console.error(e);
-      // Fallback to localStorage if guest and failed to fetch
       const localSess = SessionManager.get();
-      if (localSess.mode === 'guest' && failures.length === 0 && localSess.failuresCache?.length) {
+      if (localSess.failuresCache?.length) {
         setFailures(localSess.failuresCache);
         if (localSess.statsCache) setStats(localSess.statsCache);
         if (localSess.analyticsCache) setAnalytics(localSess.analyticsCache);
-        if (localSess.failuresCache.length > 0 && !selectedId) {
-          setSelectedId(localSess.failuresCache[0].id);
-        }
+        setSelectedId(prev => prev ?? localSess.failuresCache![0]?.id ?? null);
       }
     } finally {
       setLoading(false);
     }
-  }, [selectedId, failures.length]);
+  }, []); // stable — no deps that change
 
   useEffect(() => {
     fetchAll();
     const iv = setInterval(fetchAll, 15000);
     return () => clearInterval(iv);
-  }, []);
+  }, [fetchAll]);
 
   const selected = failures.find(f => f.id === selectedId);
   const latestRun = selected?.analysisRuns?.[0];

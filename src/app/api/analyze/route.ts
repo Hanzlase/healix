@@ -3,6 +3,8 @@ import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { runHealixPipeline } from '@/services/healix-orchestrator';
 
+export const maxDuration = 60; // 60 seconds limit for hobby tier
+
 const BodySchema = z.object({
   failureId: z.string().min(1),
   owner: z.string().min(1),
