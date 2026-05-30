@@ -19,6 +19,13 @@ enum ReviewStatus {
   rejected
 }
 
+enum JobStatus {
+  queued
+  processing
+  completed
+  failed
+}
+
 model User {
   id           String   @id @default(cuid())
   email        String   @unique
@@ -108,11 +115,36 @@ model PipelineFailure {
 
   repository   Repository    @relation(fields: [repoId], references: [id], onDelete: Cascade)
   analysisRuns AnalysisRun[]
+  analysisJobs AnalysisJob[]
 
   @@index([repoId])
   @@index([commitSha])
   @@index([status])
   @@map("pipeline_failures")
+}
+
+model AnalysisJob {
+  id            String    @id @default(cuid())
+  failureId     String    @map("failure_id")
+  owner         String
+  repo          String
+  workflowRunId Int       @map("workflow_run_id")
+  commitSha     String    @map("commit_sha")
+  status        JobStatus @default(queued)
+  attempts      Int       @default(0)
+  nextAttemptAt DateTime? @map("next_attempt_at")
+  lockedAt      DateTime? @map("locked_at")
+  lockedBy      String?   @map("locked_by")
+  lastError     String?   @map("last_error") @db.Text
+  completedAt   DateTime? @map("completed_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  failure PipelineFailure @relation(fields: [failureId], references: [id], onDelete: Cascade)
+
+  @@unique([failureId])
+  @@index([status, nextAttemptAt])
+  @@map("analysis_jobs")
 }
 
 model AnalysisRun {

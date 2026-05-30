@@ -6,6 +6,14 @@ import { generatePatch } from '@/services/patch-generator';
 import { reviewPatch } from '@/services/patch-reviewer';
 import { createFixPullRequest } from '@/services/github-pr';
 import type { HealixPipelineResult } from '@/lib/types';
+import { createLogger } from '@/lib/logger';
+
+export class PipelineLockError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'PipelineLockError';
+  }
+}
 
 export async function runHealixPipeline(params: {
   failureId: string;
@@ -13,16 +21,29 @@ export async function runHealixPipeline(params: {
   repo: string;
   workflowRunId: number;
   commitSha: string;
-}): Promise<HealixPipelineResult> {
+}, options?: { markFailed?: boolean }): Promise<HealixPipelineResult> {
   const t0 = Date.now();
+  const markFailed = options?.markFailed ?? true;
 
-  const failure = await prisma.pipelineFailure.findUnique({ where: { id: params.failureId } });
+  const locked = await prisma.pipelineFailure.updateMany({
+    where: { id: params.failureId, status: { in: ['pending', 'failed'] } },
+    data: { status: 'analyzing' },
+  });
+
+  if (locked.count === 0) {
+    throw new PipelineLockError(`Failure is already being processed: ${params.failureId}`);
+  }
+
+  const failure = await prisma.pipelineFailure.findUnique({
+    where: { id: params.failureId },
+    include: { repository: true },
+  });
   if (!failure) throw new Error(`Failure not found: ${params.failureId}`);
 
-  // Mark as actively analyzing
-  await prisma.pipelineFailure.update({
-    where: { id: params.failureId },
-    data: { status: 'analyzing' },
+  const log = createLogger({
+    failureId: params.failureId,
+    owner: params.owner,
+    repo: params.repo,
   });
 
   try {
@@ -70,9 +91,17 @@ export async function runHealixPipeline(params: {
     let prUrl: string | null = null;
     let prBranch: string | null = null;
 
-    if (review.status === 'approved') {
+    const autoPrEnabled = failure.repository.autoPrEnabled !== false;
+    let installationId: number | undefined;
+    if (failure.repository.githubInstallationId) {
+      const parsed = Number(failure.repository.githubInstallationId);
+      if (Number.isFinite(parsed)) installationId = parsed;
+    }
+
+    if (review.status === 'approved' && autoPrEnabled) {
       try {
         const pr = await createFixPullRequest({
+          installationId,
           owner: params.owner,
           repo: params.repo,
           baseSha: params.commitSha,
@@ -84,7 +113,7 @@ export async function runHealixPipeline(params: {
         prUrl = pr.prUrl;
         prBranch = pr.branch;
       } catch (prErr) {
-        console.error('[orchestrator] PR creation failed:', prErr);
+        log.error('PR creation failed', { stage: 'pr' }, prErr);
         // Don't fail the entire pipeline over a PR error
       }
     }
@@ -124,10 +153,11 @@ export async function runHealixPipeline(params: {
       analysisRunId: run.id,
     };
   } catch (err) {
-    // Mark failure with error status
+    log.error('Pipeline failed', { stage: 'pipeline' }, err);
+    const status = markFailed ? 'failed' : 'pending';
     await prisma.pipelineFailure.update({
       where: { id: params.failureId },
-      data: { status: 'failed' },
+      data: { status },
     }).catch(() => {});
     throw err;
   }

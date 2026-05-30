@@ -1,4 +1,4 @@
-# Healix - AI-Powered CI/CD Failure Auto-Healer
+ # Healix - AI-Powered CI/CD Failure Auto-Healer
 
 Healix automatically detects, analyzes, and fixes CI/CD pipeline failures using AI. When your GitHub Actions workflow fails, Healix:
 

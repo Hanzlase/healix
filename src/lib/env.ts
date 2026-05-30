@@ -4,7 +4,8 @@ const boolish = z
   .string()
   .optional()
   .transform((v) => (v ?? '').toLowerCase())
-  .pipe(z.enum(['true', 'false', '']).transform((v) => v === 'true'));
+  .pipe(z.enum(['true', 'false', '']).optional())
+  .transform((v) => v === 'true');
 
 export const env = (() => {
   const schema = z.object({
@@ -35,6 +36,16 @@ export const env = (() => {
 
     // Optional: auto-trigger full pipeline on webhook (default: true)
     AUTO_HEAL_ON_WEBHOOK: boolish,
+
+    // Optional: rate limiting
+    RATE_LIMIT_ENABLED: boolish,
+    RATE_LIMIT_WINDOW_MS: z.string().optional(),
+    RATE_LIMIT_MAX: z.string().optional(),
+
+    // Optional: analysis queue/retry
+    ANALYSIS_MAX_ATTEMPTS: z.string().optional(),
+    ANALYSIS_BACKOFF_MS: z.string().optional(),
+    ANALYSIS_LOCK_TTL_MS: z.string().optional(),
   });
 
   const parsed = schema.safeParse(process.env);

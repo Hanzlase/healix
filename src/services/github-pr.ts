@@ -8,6 +8,11 @@ function getOctokit() {
   return new Octokit({ auth: token });
 }
 
+async function getOctokitForPr(installationId?: number): Promise<Octokit> {
+  if (installationId) return getInstallationOctokit(installationId);
+  return getOctokit();
+}
+
 async function getDefaultBranch(octokit: Octokit, params: { owner: string; repo: string }) {
   const repo = await octokit.repos.get({ owner: params.owner, repo: params.repo });
   return repo.data.default_branch;
@@ -97,9 +102,7 @@ export async function createFixPullRequest(params: {
   patch: string;
   reviewer: { status: 'approved' | 'rejected'; reason: string; risk_level: 'low' | 'medium' | 'high' };
 }): Promise<{ prUrl: string; branch: string }> {
-  const octokit = params.installationId
-    ? await getInstallationOctokit(params.installationId)
-    : getOctokit();
+  const octokit = await getOctokitForPr(params.installationId);
   const defaultBranch = await getDefaultBranch(octokit, { owner: params.owner, repo: params.repo });
 
   const branch = `healix/fix-${params.baseSha.slice(0, 7)}`;

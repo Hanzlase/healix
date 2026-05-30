@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { prisma } from '@/lib/prisma';
 import type { GithubFailureEvent } from '@/lib/types';
+import { createLogger, getRequestId } from '@/lib/logger';
+import { checkRateLimit, getClientId, getRateLimitConfig } from '@/lib/rate-limit';
+import { enqueueAnalysisJob, processAnalysisJobWithRetries } from '@/services/analysis-queue';
 
 export const maxDuration = 60; // 60 seconds limit for hobby tier
 
@@ -60,12 +63,39 @@ function parseFailureEvent(body: any): GithubFailureEvent | null {
 }
 
 export async function POST(req: Request) {
+  const requestId = getRequestId(req);
+  const log = createLogger({ requestId, route: 'webhooks/github' });
+
+  const rateConfig = getRateLimitConfig();
+  if (rateConfig.enabled) {
+    const rate = checkRateLimit({
+      key: `webhook:${getClientId(req)}`,
+      limit: rateConfig.limit,
+      windowMs: rateConfig.windowMs,
+    });
+    if (!rate.ok) {
+      return NextResponse.json(
+        { ok: false, error: 'Rate limit exceeded' },
+        {
+          status: 429,
+          headers: {
+            'Retry-After': Math.ceil((rate.resetAt - Date.now()) / 1000).toString(),
+            'x-request-id': requestId,
+          },
+        }
+      );
+    }
+  }
+
   const event = req.headers.get('x-github-event');
 
   // Acknowledge non-workflow events immediately
   if (event !== 'workflow_run') {
-    console.log(`[webhook] Ignored event type: ${event}`);
-    return NextResponse.json({ ok: true, ignored: true, reason: `Not a workflow_run event (was ${event})` }, { status: 200 });
+    log.info('Ignored event type', { event });
+    return NextResponse.json(
+      { ok: true, ignored: true, reason: `Not a workflow_run event (was ${event})` },
+      { status: 200, headers: { 'x-request-id': requestId } }
+    );
   }
 
   const rawBody = await req.text();
@@ -73,22 +103,43 @@ export async function POST(req: Request) {
   const secret = process.env.GITHUB_WEBHOOK_SECRET;
 
   if (!secret) {
-    console.error('[webhook] GITHUB_WEBHOOK_SECRET not set');
-    return NextResponse.json({ ok: false, error: 'Webhook secret not configured' }, { status: 500 });
+    log.error('GITHUB_WEBHOOK_SECRET not set');
+    return NextResponse.json(
+      { ok: false, error: 'Webhook secret not configured' },
+      { status: 500, headers: { 'x-request-id': requestId } }
+    );
   }
 
   if (!verifySignature(rawBody, signature, secret)) {
-    console.error('[webhook] Signature verification failed');
-    return NextResponse.json({ ok: false, error: 'Invalid signature' }, { status: 401 });
+    log.warn('Signature verification failed');
+    return NextResponse.json(
+      { ok: false, error: 'Invalid signature' },
+      { status: 401, headers: { 'x-request-id': requestId } }
+    );
   }
 
-  const body = JSON.parse(rawBody);
+  let body: any;
+  try {
+    body = JSON.parse(rawBody);
+  } catch (err) {
+    log.warn('Invalid JSON payload', {}, err);
+    return NextResponse.json(
+      { ok: false, error: 'Invalid JSON payload' },
+      { status: 400, headers: { 'x-request-id': requestId } }
+    );
+  }
   const parsed = parseFailureEvent(body);
 
   // Ignore non-failure or incomplete events
   if (!parsed) {
-    console.log(`[webhook] Ignored workflow_run. Conclusion: ${body?.workflow_run?.conclusion}, Action: ${body?.action}`);
-    return NextResponse.json({ ok: true, ignored: true, reason: 'Not a failure conclusion or missing fields' }, { status: 200 });
+    log.info('Ignored workflow_run', {
+      conclusion: body?.workflow_run?.conclusion,
+      action: body?.action,
+    });
+    return NextResponse.json(
+      { ok: true, ignored: true, reason: 'Not a failure conclusion or missing fields' },
+      { status: 200, headers: { 'x-request-id': requestId } }
+    );
   }
 
   // Upsert a system user to own webhook-triggered failures
@@ -120,6 +171,14 @@ export async function POST(req: Request) {
     },
   });
 
+  const job = await enqueueAnalysisJob({
+    failureId: failure.id,
+    owner: parsed.owner,
+    repo: parsed.repoName,
+    workflowRunId: parsed.workflowRunId,
+    commitSha: parsed.commitSha,
+  });
+
   // ── Auto-trigger the full healing pipeline ──────────────────────────────
   // We use `after` to run the task in the background on Vercel after the response is sent.
   const autoHeal = (process.env.AUTO_HEAL_ON_WEBHOOK ?? 'true') !== 'false';
@@ -127,28 +186,20 @@ export async function POST(req: Request) {
   if (autoHeal) {
     import('next/server').then(({ after }) => {
       after(() => {
-        import('@/services/healix-orchestrator')
-          .then(({ runHealixPipeline }) =>
-            runHealixPipeline({
-              failureId: failure.id,
-              owner: parsed.owner,
-              repo: parsed.repoName,
-              workflowRunId: parsed.workflowRunId,
-              commitSha: parsed.commitSha,
-            })
-          )
+        processAnalysisJobWithRetries(job.id, { maxInlineRetries: 1 })
           .then((result) => {
-            console.log(
-              `[webhook] Pipeline complete for ${failure.id}: ` +
-              `${result.review.status} | PR: ${result.prUrl ?? 'none'}`
-            );
+            log.info('Pipeline complete', {
+              failureId: failure.id,
+              status: result.status,
+              nextAttemptAt: result.status === 'queued' ? result.nextAttemptAt?.toISOString() : undefined,
+            });
           })
           .catch((err) => {
-            console.error(`[webhook] Pipeline failed for ${failure.id}:`, err);
+            log.error('Pipeline failed', { failureId: failure.id }, err);
           });
       });
     }).catch(err => {
-        console.error('Failed to import next/server after', err)
+        log.error('Failed to import next/server after', {}, err);
     });
   }
 
@@ -164,7 +215,8 @@ export async function POST(req: Request) {
         branch: parsed.branchName,
       },
       autoHeal,
+      jobId: job.id,
     },
-    { status: 201 }
+    { status: 201, headers: { 'x-request-id': requestId } }
   );
 }
