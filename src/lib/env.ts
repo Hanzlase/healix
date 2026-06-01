@@ -4,7 +4,7 @@ const boolish = z
   .string()
   .optional()
   .transform((v) => (v ?? '').toLowerCase())
-  .pipe(z.enum(['true', 'false', '']).optional())
+  .pipe(z.enum(['true', 'false', '']))
   .transform((v) => v === 'true');
 
 export const env = (() => {
