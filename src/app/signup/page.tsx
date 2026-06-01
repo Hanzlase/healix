@@ -58,7 +58,7 @@ export default function SignUpPage() {
             </div>
             <span className="text-2xl font-black tracking-tight text-slate-900">Healix</span>
           </Link>
-          <p className="text-slate-500 text-sm mt-4">Create an account to start using Healix</p>
+          <p className="text-slate-500 text-sm mt-4">Create an account to get started in minutes</p>
         </div>
 
         <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-8">
