@@ -34,7 +34,7 @@ export async function reviewPatch(input: {
   };
 
   const res = await client.chat.completions.create({
-    model: 'gpt-oss-120b',
+    model: 'openai/gpt-oss-120b',
     temperature: 0,
     top_p: 1,
     messages: [

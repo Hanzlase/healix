@@ -47,26 +47,73 @@ export async function fetchGithubContext(params: {
 }): Promise<GithubContext> {
   const octokit = getOctokit();
 
-  // 1) Logs download
-  let logsText = '';
-  let logsIsZip = false;
+  // 1) Failed job steps & listing jobs (best-effort)
+  let failedSteps: string[] = [];
+  let listedJobs: any[] = [];
   try {
-    const logsRes = await octokit.actions.downloadWorkflowRunLogs({
+    const jobsRes = await octokit.actions.listJobsForWorkflowRun({
       owner: params.owner,
       repo: params.repo,
       run_id: params.workflowRunId,
     });
+    listedJobs = jobsRes.data.jobs ?? [];
 
-    const buf = Buffer.from(logsRes.data as ArrayBuffer);
-    const decoded = tryDecodeZipAsText(buf);
-    logsText = decoded.text;
-    logsIsZip = decoded.isZip;
+    failedSteps = listedJobs
+      .flatMap((j) => j.steps ?? [])
+      .filter((s) => (s.conclusion ?? s.status) === 'failure')
+      .map((s) => `${s.name}${s.number ? ` (#${s.number})` : ''}`)
+      .slice(0, 50);
   } catch (err) {
-    console.error('[github] Failed to fetch workflow logs:', err);
-    logsText = '(Unable to fetch logs — check GITHUB_TOKEN permissions)';
+    console.error('[github] Failed to list jobs:', err);
   }
 
-  // 2) Commit diff
+  // 2) Logs download (attempt failed jobs first, fallback to zip bundle)
+  let logsText = '';
+  let logsIsZip = false;
+
+  const failedJobs = listedJobs.filter(
+    (j: any) => j.conclusion === 'failure' || (j.steps ?? []).some((s: any) => s.conclusion === 'failure')
+  );
+
+  if (failedJobs.length > 0) {
+    for (const job of failedJobs) {
+      try {
+        const logRes = await octokit.actions.downloadJobLogsForWorkflowRun({
+          owner: params.owner,
+          repo: params.repo,
+          job_id: job.id,
+        });
+        if (logRes.data) {
+          const text = typeof logRes.data === 'string'
+            ? logRes.data
+            : Buffer.from(logRes.data as ArrayBuffer).toString('utf8');
+          logsText += `--- Job: ${job.name} ---\n${text}\n`;
+        }
+      } catch (err) {
+        console.error(`[github] Failed to download logs for job ${job.name} (${job.id}):`, err);
+      }
+    }
+  }
+
+  if (!logsText) {
+    try {
+      const logsRes = await octokit.actions.downloadWorkflowRunLogs({
+        owner: params.owner,
+        repo: params.repo,
+        run_id: params.workflowRunId,
+      });
+
+      const buf = Buffer.from(logsRes.data as ArrayBuffer);
+      const decoded = tryDecodeZipAsText(buf);
+      logsText = decoded.text;
+      logsIsZip = decoded.isZip;
+    } catch (err) {
+      console.error('[github] Failed to fetch workflow run logs zip:', err);
+      logsText = '(Unable to fetch logs — check GITHUB_TOKEN permissions)';
+    }
+  }
+
+  // 3) Commit diff
   let diffText = '';
   try {
     const diffRes = await octokit.repos.getCommit({
@@ -78,24 +125,6 @@ export async function fetchGithubContext(params: {
     diffText = typeof diffRes.data === 'string' ? diffRes.data : '';
   } catch (err) {
     console.error('[github] Failed to fetch commit diff:', err);
-  }
-
-  // 3) Failed job steps (best-effort)
-  let failedSteps: string[] = [];
-  try {
-    const jobs = await octokit.actions.listJobsForWorkflowRun({
-      owner: params.owner,
-      repo: params.repo,
-      run_id: params.workflowRunId,
-    });
-
-    failedSteps = (jobs.data.jobs ?? [])
-      .flatMap((j) => j.steps ?? [])
-      .filter((s) => (s.conclusion ?? s.status) === 'failure')
-      .map((s) => `${s.name}${s.number ? ` (#${s.number})` : ''}`)
-      .slice(0, 50);
-  } catch {
-    // ignore — token may not have workflow read access
   }
 
   const diffFiles = extractFilesFromDiff(diffText);

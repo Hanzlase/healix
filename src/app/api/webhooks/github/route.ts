@@ -17,19 +17,11 @@ function verifySignature(rawBody: string, signatureHeader: string | null, secret
   hmac.update(rawBody, 'utf8');
   const ours = hmac.digest('hex');
 
-  // Pad to same length before constant-time compare
-  if (ours.length !== theirSig.length) {
-    // Use same-length buffers to avoid timing leak
-    const a = Buffer.alloc(32, 0);
-    const b = Buffer.alloc(32, 0);
-    Buffer.from(ours, 'hex').copy(a, 0, 0, Math.min(32, 32));
-    Buffer.from(theirSig, 'hex').copy(b, 0, 0, Math.min(theirSig.length / 2, 32));
-    return crypto.timingSafeEqual(a, b) && ours === theirSig;
-  }
+  const oursBuffer = Buffer.from(ours, 'utf8');
+  const theirSigBuffer = Buffer.from(theirSig, 'utf8');
 
-  const a = Buffer.from(ours, 'hex');
-  const b = Buffer.from(theirSig, 'hex');
-  return a.length === b.length && crypto.timingSafeEqual(a, b);
+  if (oursBuffer.length !== theirSigBuffer.length) return false;
+  return crypto.timingSafeEqual(oursBuffer, theirSigBuffer);
 }
 
 function parseFailureEvent(body: any): GithubFailureEvent | null {
@@ -142,42 +134,55 @@ export async function POST(req: Request) {
     );
   }
 
-  // Upsert a system user to own webhook-triggered failures
-  const systemEmail = 'system@healix.local';
-  const user = await prisma.user.upsert({
-    where: { email: systemEmail },
-    update: {},
-    create: { email: systemEmail },
+  // Find all repositories matching this repo name (both user-added and system-owned)
+  let repos = await prisma.repository.findMany({
+    where: { repoName: parsed.repoFullName },
   });
 
-  const repo = await prisma.repository.upsert({
-    where: { userId_repoName: { userId: user.id, repoName: parsed.repoFullName } },
-    update: {},
-    create: {
-      userId: user.id,
-      repoName: parsed.repoFullName,
-      repoOwner: parsed.owner,
-    },
-  });
+  // Fallback: if no user has added this repository, upsert/create under the system user
+  if (repos.length === 0) {
+    const systemEmail = 'system@healix.local';
+    const user = await prisma.user.upsert({
+      where: { email: systemEmail },
+      update: {},
+      create: { email: systemEmail },
+    });
 
-  const failure = await prisma.pipelineFailure.create({
-    data: {
-      repoId: repo.id,
+    const systemRepo = await prisma.repository.create({
+      data: {
+        userId: user.id,
+        repoName: parsed.repoFullName,
+        repoOwner: parsed.owner,
+        autoPrEnabled: true,
+      },
+    });
+    repos = [systemRepo];
+  }
+
+  // Create pipeline failure and enqueue analysis job for each matching repository
+  const failuresAndJobs: Array<{ failure: any; job: any }> = [];
+  for (const repo of repos) {
+    const failure = await prisma.pipelineFailure.create({
+      data: {
+        repoId: repo.id,
+        commitSha: parsed.commitSha,
+        workflowRunId: String(parsed.workflowRunId),
+        workflowName: parsed.workflowName,
+        branchName: parsed.branchName,
+        status: 'pending',
+      },
+    });
+
+    const job = await enqueueAnalysisJob({
+      failureId: failure.id,
+      owner: parsed.owner,
+      repo: parsed.repoName,
+      workflowRunId: parsed.workflowRunId,
       commitSha: parsed.commitSha,
-      workflowRunId: String(parsed.workflowRunId),
-      workflowName: parsed.workflowName,
-      branchName: parsed.branchName,
-      status: 'pending',
-    },
-  });
+    });
 
-  const job = await enqueueAnalysisJob({
-    failureId: failure.id,
-    owner: parsed.owner,
-    repo: parsed.repoName,
-    workflowRunId: parsed.workflowRunId,
-    commitSha: parsed.commitSha,
-  });
+    failuresAndJobs.push({ failure, job });
+  }
 
   // ── Auto-trigger the full healing pipeline ──────────────────────────────
   // We use `after` to run the task in the background on Vercel after the response is sent.
@@ -185,28 +190,32 @@ export async function POST(req: Request) {
 
   if (autoHeal) {
     import('next/server').then(({ after }) => {
-      after(() => {
-        processAnalysisJobWithRetries(job.id, { maxInlineRetries: 1 })
-          .then((result) => {
+      after(async () => {
+        for (const { failure, job } of failuresAndJobs) {
+          try {
+            const result = await processAnalysisJobWithRetries(job.id, { maxInlineRetries: 1 });
             log.info('Pipeline complete', {
               failureId: failure.id,
               status: result.status,
               nextAttemptAt: result.status === 'queued' ? result.nextAttemptAt?.toISOString() : undefined,
             });
-          })
-          .catch((err) => {
+          } catch (err) {
             log.error('Pipeline failed', { failureId: failure.id }, err);
-          });
+          }
+        }
       });
     }).catch(err => {
         log.error('Failed to import next/server after', {}, err);
     });
   }
 
+  const firstFailure = failuresAndJobs[0]?.failure;
+  const firstJob = failuresAndJobs[0]?.job;
+
   return NextResponse.json(
     {
       ok: true,
-      failureId: failure.id,
+      failureId: firstFailure?.id,
       event: {
         repo: parsed.repoFullName,
         sha: parsed.commitSha,
@@ -215,7 +224,8 @@ export async function POST(req: Request) {
         branch: parsed.branchName,
       },
       autoHeal,
-      jobId: job.id,
+      jobId: firstJob?.id,
+      processedCount: failuresAndJobs.length,
     },
     { status: 201, headers: { 'x-request-id': requestId } }
   );
