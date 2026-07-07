@@ -128,7 +128,7 @@ model AnalysisJob {
   failureId     String    @map("failure_id")
   owner         String
   repo          String
-  workflowRunId Int       @map("workflow_run_id")
+  workflowRunId String    @map("workflow_run_id")
   commitSha     String    @map("commit_sha")
   status        JobStatus @default(queued)
   attempts      Int       @default(0)

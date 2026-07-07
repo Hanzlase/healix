@@ -63,7 +63,7 @@ export async function enqueueAnalysisJob(payload: AnalysisJobPayload) {
     update: {
       owner: payload.owner,
       repo: payload.repo,
-      workflowRunId: payload.workflowRunId,
+      workflowRunId: String(payload.workflowRunId),
       commitSha: payload.commitSha,
       status: 'queued',
       nextAttemptAt: now,
@@ -72,7 +72,7 @@ export async function enqueueAnalysisJob(payload: AnalysisJobPayload) {
       failureId: payload.failureId,
       owner: payload.owner,
       repo: payload.repo,
-      workflowRunId: payload.workflowRunId,
+      workflowRunId: String(payload.workflowRunId),
       commitSha: payload.commitSha,
       status: 'queued',
       nextAttemptAt: now,
@@ -116,7 +116,7 @@ export async function processAnalysisJob(jobId: string, workerId?: string): Prom
         failureId: job.failureId,
         owner: job.owner,
         repo: job.repo,
-        workflowRunId: job.workflowRunId,
+        workflowRunId: Number(job.workflowRunId),
         commitSha: job.commitSha,
       },
       { markFailed: false }
