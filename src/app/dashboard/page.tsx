@@ -212,13 +212,13 @@ export default function DashboardPage() {
                     {selected ? selected.repository.repoName.split('/')[1] ?? selected.repository.repoName : 'Select a failure'}
                   </h2>
                 </div>
-                {selected && selected.status === 'pending' && (
+                {selected && (selected.status === 'pending' || selected.status === 'failed') && (
                   <button
                     onClick={triggerHeal}
                     disabled={healing}
                     className="px-5 py-2.5 bg-blue-600 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-blue-700 transition-all disabled:opacity-50 shadow-lg shadow-blue-100"
                   >
-                    {healing ? 'Healing…' : '⚡ Heal Now'}
+                    {healing ? 'Healing…' : selected.status === 'failed' ? '🔄 Retry Heal' : '⚡ Heal Now'}
                   </button>
                 )}
                 {latestRun && (
