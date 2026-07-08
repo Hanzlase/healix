@@ -16,6 +16,7 @@ type AnalysisRun = {
 type FailureItem = {
   id: string; repoId: string; commitSha: string; status: string;
   workflowName: string | null; branchName: string | null; errorSummary: string | null;
+  workflowRunId: string | null;
   createdAt: string;
   repository: { id: string; repoName: string; repoOwner: string | null; autoPrEnabled: boolean };
   analysisRuns: AnalysisRun[];
@@ -120,7 +121,7 @@ export default function DashboardPage() {
         body: JSON.stringify({
           failureId: selected.id,
           owner, repo,
-          workflowRunId: 1,
+          workflowRunId: Number(selected.workflowRunId ?? '0'),
           commitSha: selected.commitSha,
         }),
       });
