@@ -1,16 +1,17 @@
 import { Octokit } from '@octokit/rest';
 import { applyPatch } from 'diff';
 import { getInstallationOctokit } from '@/lib/github-app';
+import { prisma } from '@/lib/prisma';
 
-function getOctokit() {
-  const token = process.env.GITHUB_TOKEN;
-  if (!token) throw new Error('GITHUB_TOKEN is required for PR automation');
-  return new Octokit({ auth: token });
+function getOctokit(token?: string | null) {
+  const authToken = token || process.env.GITHUB_TOKEN;
+  if (!authToken) throw new Error('GITHUB_TOKEN is required for PR automation');
+  return new Octokit({ auth: authToken });
 }
 
-async function getOctokitForPr(installationId?: number): Promise<Octokit> {
+async function getOctokitForPr(installationId?: number, token?: string | null): Promise<Octokit> {
   if (installationId) return getInstallationOctokit(installationId);
-  return getOctokit();
+  return getOctokit(token);
 }
 
 async function getDefaultBranch(octokit: Octokit, params: { owner: string; repo: string }) {
@@ -102,7 +103,15 @@ export async function createFixPullRequest(params: {
   patch: string;
   reviewer: { status: 'approved' | 'rejected'; reason: string; risk_level: 'low' | 'medium' | 'high' };
 }): Promise<{ prUrl: string; branch: string }> {
-  const octokit = await getOctokitForPr(params.installationId);
+  // Fetch repository token from database if available
+  const repoRecord = await (prisma.repository as any).findFirst({
+    where: {
+      repoName: `${params.owner}/${params.repo}`,
+    },
+  });
+  const token = (repoRecord as any)?.githubToken;
+
+  const octokit = await getOctokitForPr(params.installationId, token);
   const defaultBranch = await getDefaultBranch(octokit, { owner: params.owner, repo: params.repo });
 
   const branch = `healix/fix-${params.baseSha.slice(0, 7)}`;

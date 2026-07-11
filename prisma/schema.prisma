@@ -88,6 +88,7 @@ model Repository {
   repoName             String   @map("repo_name")
   repoOwner            String?  @map("repo_owner")
   githubInstallationId String?  @map("github_installation_id")
+  githubToken          String?  @map("github_token")
   autoPrEnabled        Boolean  @default(true) @map("auto_pr_enabled")
   createdAt            DateTime @default(now()) @map("created_at")
   updatedAt            DateTime @updatedAt @map("updated_at")

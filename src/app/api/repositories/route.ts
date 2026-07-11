@@ -9,6 +9,7 @@ import { checkRateLimit, getClientId, getRateLimitConfig } from '@/lib/rate-limi
 const AddRepoSchema = z.object({
   repoFullName: z.string().regex(/^[\w.-]+\/[\w.-]+$/),
   autoPrEnabled: z.boolean().optional().default(true),
+  githubToken: z.string().optional().nullable(),
 });
 
 export async function GET(req: NextRequest) {
@@ -106,12 +107,16 @@ export async function POST(req: NextRequest) {
 
     const repo = await prisma.repository.upsert({
       where: { userId_repoName: { userId: user.id, repoName: parsed.data.repoFullName } },
-      update: { autoPrEnabled: parsed.data.autoPrEnabled },
+      update: { 
+        autoPrEnabled: parsed.data.autoPrEnabled,
+        githubToken: parsed.data.githubToken ?? null,
+      },
       create: {
         userId: user.id,
         repoName: parsed.data.repoFullName,
         repoOwner: owner,
         autoPrEnabled: parsed.data.autoPrEnabled,
+        githubToken: parsed.data.githubToken ?? null,
       },
     });
 

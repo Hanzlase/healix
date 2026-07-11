@@ -44,9 +44,11 @@ export default function SettingsPage() {
   const [showWebhookGuide, setShowWebhookGuide] = useState(false);
   const [deletingRepo, setDeletingRepo] = useState<string | null>(null);
   const [copiedWebhook, setCopiedWebhook] = useState(false);
+  const [githubTokenInput, setGithubTokenInput] = useState('');
+  const [showTokenHelp, setShowTokenHelp] = useState(false);
+  const [webhookSecret, setWebhookSecret] = useState('loading...');
 
   const webhookUrl = typeof window !== 'undefined' ? `${window.location.origin}/api/webhooks/github` : '/api/webhooks/github';
-  const webhookSecret = 'GITHUB_WEBHOOK_SECRET';
 
   useEffect(() => {
     async function load() {
@@ -61,6 +63,16 @@ export default function SettingsPage() {
       const res = await fetch(`/api/repositories?repos=${encodeURIComponent(localSess.repoFullName || '')}`);
       const data = await res.json();
       setRepos(Array.isArray(data) ? data : []);
+
+      try {
+        const configRes = await fetch('/api/config');
+        const configData = await configRes.json();
+        if (configData.webhookSecret) {
+          setWebhookSecret(configData.webhookSecret);
+        }
+      } catch (err) {
+        console.error('Failed to load webhook secret', err);
+      }
     }
     load();
   }, []);
@@ -104,7 +116,11 @@ export default function SettingsPage() {
       const res = await fetch('/api/repositories', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ repoFullName: cleanRepo, autoPrEnabled: session?.autoPrEnabled ?? true }),
+        body: JSON.stringify({ 
+          repoFullName: cleanRepo, 
+          autoPrEnabled: session?.autoPrEnabled ?? true,
+          githubToken: githubTokenInput.trim() || null,
+        }),
       });
       if (!res.ok) throw new Error('Failed');
       const data = await res.json();
@@ -117,6 +133,7 @@ export default function SettingsPage() {
       
       setRepos(prev => [data, ...prev.filter(r => r.repoName !== data.repoName)]);
       setRepoInput('');
+      setGithubTokenInput('');
       setAddSuccess(`✓ Connected ${cleanRepo} successfully!`);
       setTimeout(() => setAddSuccess(''), 4000);
     } catch { 
@@ -233,26 +250,69 @@ export default function SettingsPage() {
             </CardHeader>
             <CardContent className="p-6 space-y-5">
               <div className="bg-surface-50 border border-surface-200/60 rounded-xl p-5 space-y-4">
-                <div className="flex flex-col sm:flex-row gap-3">
-                  <div className="flex-1">
-                    <Input
-                      placeholder="owner/repository (e.g. facebook/react)"
-                      value={repoInput}
-                      onChange={e => { setRepoInput(e.target.value); setAddError(''); setAddSuccess(''); }}
-                      onKeyDown={e => e.key === 'Enter' && handleAddRepo()}
-                      disabled={adding}
-                      className="h-10"
-                    />
+                <div className="space-y-3.5">
+                  <Input
+                    label="Repository Name"
+                    placeholder="owner/repository (e.g. facebook/react)"
+                    value={repoInput}
+                    onChange={e => { setRepoInput(e.target.value); setAddError(''); setAddSuccess(''); }}
+                    disabled={adding}
+                    className="h-10"
+                  />
+                  <Input
+                    label="GitHub Access Token (Optional)"
+                    type="password"
+                    placeholder="ghp_xxxxxxxxxxxx"
+                    value={githubTokenInput}
+                    onChange={e => { setGithubTokenInput(e.target.value); setAddError(''); setAddSuccess(''); }}
+                    disabled={adding}
+                    className="h-10"
+                    helperText="Providing an optional custom token for this repository enables PR automation specifically for this project."
+                  />
+                  
+                  <div className="pt-0.5">
+                    <button
+                      type="button"
+                      onClick={() => setShowTokenHelp(!showTokenHelp)}
+                      className="text-xs font-semibold text-brand-600 hover:text-brand-700 transition-colors flex items-center gap-1 cursor-pointer"
+                    >
+                      {showTokenHelp ? 'Hide Token Setup Instructions' : 'How do I generate a GitHub Access Token?'}
+                    </button>
+
+                    {showTokenHelp && (
+                      <div className="bg-white border border-surface-200/80 rounded-lg p-4.5 space-y-3.5 text-xs text-surface-650 mt-2.5">
+                        <div>
+                          <h4 className="font-bold text-surface-900 mb-1">Option 1: Classic Personal Access Token (PAT)</h4>
+                          <ol className="list-decimal pl-4 space-y-1 leading-relaxed">
+                            <li>Go to GitHub Settings &rarr; <strong>Developer Settings</strong> &rarr; <strong>Personal Access Tokens</strong> &rarr; <strong>Tokens (classic)</strong>.</li>
+                            <li>Click <strong>Generate new token</strong>. Select the <strong>`repo`</strong> scope permission (granting full control of private and public repositories).</li>
+                            <li>Copy the generated token and paste it above.</li>
+                          </ol>
+                        </div>
+                        <div className="border-t border-surface-150 pt-3">
+                          <h4 className="font-bold text-surface-900 mb-1">Option 2: Fine-Grained Personal Access Token (Recommended)</h4>
+                          <ol className="list-decimal pl-4 space-y-1 leading-relaxed">
+                            <li>Go to GitHub Settings &rarr; <strong>Developer Settings</strong> &rarr; <strong>Personal Access Tokens</strong> &rarr; <strong>Fine-grained tokens</strong>.</li>
+                            <li>Click <strong>Generate new token</strong>. Set Repository Access to your target repository (e.g. `healixtesting`).</li>
+                            <li>Under permissions, set **Repository permissions** &rarr; <strong>Contents</strong> to <strong>Read and Write</strong> and **Pull requests** to <strong>Read and Write</strong>.</li>
+                            <li>Generate, copy the token, and paste it above.</li>
+                          </ol>
+                        </div>
+                      </div>
+                    )}
                   </div>
+                </div>
+                <div className="flex justify-end pt-1.5">
                   <Button
                     onClick={handleAddRepo}
                     disabled={!repoInput.trim()}
                     isLoading={adding}
-                    className="h-10 text-xs font-bold uppercase tracking-wider px-5"
+                    className="h-10 text-xs font-bold uppercase tracking-wider px-6"
                   >
-                    Add Repository
+                    Connect Repository
                   </Button>
                 </div>
+              </div>
                 
                 {/* Form feedback */}
                 {addError && (
@@ -268,7 +328,6 @@ export default function SettingsPage() {
                     <span>{addSuccess}</span>
                   </div>
                 )}
-              </div>
 
               {/* Repositories List */}
               <div className="space-y-3">
