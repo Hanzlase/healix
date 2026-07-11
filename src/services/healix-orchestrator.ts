@@ -70,6 +70,31 @@ export async function runHealixPipeline(params: {
     // ── Phase 3: Root cause analysis (Gemini) ────────────────────────────
     const root = await analyzeRootCause(aiCtx);
 
+    // Fetch repository token from database if available
+    const repoRecord = await prisma.repository.findFirst({
+      where: {
+        repoName: `${params.owner}/${params.repo}`,
+      },
+    });
+    const token = (repoRecord as any)?.githubToken || process.env.GITHUB_TOKEN;
+
+    let fileContent = '';
+    try {
+      const { Octokit } = await import('@octokit/rest');
+      const octokit = new Octokit(token ? { auth: token } : undefined);
+      const fileRes = await octokit.repos.getContent({
+        owner: params.owner,
+        repo: params.repo,
+        path: root.affected_file,
+        ref: params.commitSha,
+      });
+      if (!Array.isArray(fileRes.data) && 'content' in fileRes.data) {
+        fileContent = Buffer.from(fileRes.data.content, 'base64').toString('utf8');
+      }
+    } catch (e) {
+      log.error('Failed to fetch affected file contents from GitHub', { file: root.affected_file }, e);
+    }
+
     // ── Phase 4: Patch generation (GPT-OSS-120B) ─────────────────────────
     const patch = await generatePatch({
       root_cause: root.root_cause,
@@ -77,7 +102,8 @@ export async function runHealixPipeline(params: {
       file: root.affected_file,
       code_context:
         `Repo: ${aiCtx.repo}\nCommit: ${aiCtx.commit}\nFiles changed: ${aiCtx.filePaths.join(', ')}\n` +
-        `Error summary: ${aiCtx.errorSummary}`,
+        `Error summary: ${aiCtx.errorSummary}\n\n` +
+        `Original Content of ${root.affected_file}:\n${fileContent}`,
     });
 
     // ── Phase 5: Patch review (GPT-OSS-120B reviewer) ────────────────────
