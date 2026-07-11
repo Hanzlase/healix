@@ -465,15 +465,14 @@ export default function DashboardPage() {
 
                 {selected && (
                   <div className="flex items-center gap-3">
-                    {/* Trigger Manual Healing Action */}
-                    {(selected.status === 'pending' || selected.status === 'failed') && (
+                    {selected.status !== 'analyzing' && (
                       <Button
                         onClick={triggerHeal}
                         isLoading={healing}
                         size="sm"
-                        variant={selected.status === 'failed' ? 'outline' : 'primary'}
+                        variant={selected.status === 'pending' ? 'primary' : 'outline'}
                       >
-                        {healing ? 'Analyzing...' : selected.status === 'failed' ? 'Retry Heal' : 'Initiate Fix'}
+                        {healing ? 'Analyzing...' : selected.status === 'pending' ? 'Initiate Fix' : 'Retry Heal'}
                       </Button>
                     )}
                     {latestRun ? (
