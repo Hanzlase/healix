@@ -1,31 +1,30 @@
 import Link from 'next/link';
+import { ArrowRight, Webhook, ShieldCheck, Zap, RefreshCw, GitPullRequest, Search, FileText } from 'lucide-react';
 
 export default function HomePage() {
   return (
-    <div className="min-h-screen bg-[#F8FAFC] text-[#0F172A] font-sans">
+    <div className="min-h-screen bg-[#F8FAFC] text-surface-900 font-sans selection:bg-brand-100 selection:text-brand-700">
       {/* Premium Header */}
-      <nav className="fixed top-0 w-full bg-white/70 backdrop-blur-xl border-b border-slate-100 z-50">
-        <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-200">
-              <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
-              </svg>
+      <nav className="fixed top-0 w-full bg-white/80 backdrop-blur-md border-b border-surface-200/60 z-50 transition-smooth">
+        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 bg-brand-600 rounded-lg flex items-center justify-center shadow-sm">
+              <RefreshCw className="w-4 h-4 text-white animate-spin-[20s]" />
             </div>
-            <span className="text-2xl font-black tracking-tight">Healix</span>
+            <span className="text-xl font-bold tracking-tight text-surface-900">Healix</span>
           </div>
           
-          <div className="hidden md:flex items-center gap-10 text-sm font-bold text-slate-500 uppercase tracking-widest">
-            <Link href="#features" className="hover:text-blue-600 transition-colors">Features</Link>
-            <Link href="#how-it-works" className="hover:text-blue-600 transition-colors">Workflow</Link>
-            <Link href="/dashboard" className="hover:text-blue-600 transition-colors">Enterprise</Link>
+          <div className="hidden md:flex items-center gap-8 text-xs font-semibold text-surface-500 tracking-wider uppercase">
+            <Link href="#features" className="hover:text-brand-600 transition-colors">Features</Link>
+            <Link href="#how-it-works" className="hover:text-brand-600 transition-colors">Workflow</Link>
+            <Link href="/dashboard" className="hover:text-brand-600 transition-colors">Enterprise</Link>
           </div>
 
-          <div className="flex items-center gap-4">
-            <Link href="/dashboard" className="hidden sm:block text-sm font-bold text-slate-500 hover:text-slate-900 transition-colors uppercase tracking-widest">
+          <div className="flex items-center gap-3">
+            <Link href="/dashboard" className="text-xs font-bold text-surface-500 hover:text-surface-900 transition-colors tracking-wider uppercase px-3 py-2">
               Sign In
             </Link>
-            <Link href="/dashboard" className="px-6 py-3 bg-slate-900 text-white rounded-xl text-sm font-bold hover:bg-slate-800 transition-all shadow-xl shadow-slate-100 hover:-translate-y-0.5 uppercase tracking-widest">
+            <Link href="/dashboard" className="px-4 py-2 bg-surface-900 text-white rounded-lg text-xs font-bold hover:bg-surface-800 transition-smooth shadow-sm uppercase tracking-wider">
               Launch Console
             </Link>
           </div>
@@ -33,78 +32,87 @@ export default function HomePage() {
       </nav>
 
       {/* Hero Section */}
-      <section className="relative pt-48 pb-32 px-6 overflow-hidden">
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[600px] bg-blue-50/50 rounded-[100%] blur-[120px] -z-10 opacity-60"></div>
+      <section className="relative pt-36 pb-24 px-6 overflow-hidden">
+        {/* Subtle grid background pattern */}
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#e2e8f0_1px,transparent_1px),linear-gradient(to_bottom,#e2e8f0_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] opacity-30 -z-10" />
         
-        <div className="max-w-6xl mx-auto text-center">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-blue-50 rounded-full border border-blue-100 text-blue-600 text-xs font-black uppercase tracking-widest mb-10 animate-fade-in">
-            <span className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></span>
-            Phase 3 Autonomous Engine Live
+        <div className="max-w-4xl mx-auto text-center">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-brand-50 rounded-full border border-brand-100 text-brand-700 text-xs font-bold uppercase tracking-wider mb-8">
+            <span className="w-1.5 h-1.5 bg-brand-500 rounded-full animate-pulse"></span>
+            Autonomous Self-Healing Engine Live
           </div>
           
-          <h1 className="text-6xl md:text-8xl font-black tracking-tight text-slate-900 mb-8 leading-[0.9] md:leading-[0.9]">
+          <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight text-surface-900 mb-6 leading-tight">
             CI/CD that <br />
-            <span className="text-blue-600">heals itself.</span>
+            <span className="text-brand-600">heals itself.</span>
           </h1>
           
-          <p className="text-xl md:text-2xl text-slate-500 mb-12 max-w-3xl mx-auto leading-relaxed font-medium">
-            Stop debugging broken pipelines manually. Healix detects failures, 
-            analyzes logs, and opens a validated Pull Request—before you even get the notification.
+          <p className="text-lg md:text-xl text-surface-500 mb-10 max-w-2xl mx-auto leading-relaxed font-medium">
+            Healix intercepts pipeline failures, diagnoses errors, compiles minimal diff patches, and opens a fully validated pull request—instantly.
           </p>
           
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-6">
-            <Link href="/dashboard" className="group w-full sm:w-auto px-10 py-5 bg-blue-600 text-white rounded-2xl text-lg font-black hover:bg-blue-700 transition-all shadow-2xl shadow-blue-100 hover:-translate-y-1 flex items-center justify-center gap-3 uppercase tracking-widest">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+            <Link href="/dashboard" className="group w-full sm:w-auto px-6 py-3.5 bg-brand-500 text-white rounded-lg text-sm font-bold hover:bg-brand-600 transition-smooth shadow-sm hover:shadow flex items-center justify-center gap-2 uppercase tracking-wider">
               Connect GitHub
-              <svg className="w-5 h-5 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M17 8l4 4m0 0l-4 4m4-4H3" />
-              </svg>
+              <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
             </Link>
-            <Link href="/dashboard" className="w-full sm:w-auto px-10 py-5 bg-white border border-slate-200 text-slate-700 rounded-2xl text-lg font-black hover:bg-slate-50 transition-all shadow-sm flex items-center justify-center gap-3 uppercase tracking-widest">
+            <Link href="/dashboard" className="w-full sm:w-auto px-6 py-3.5 bg-white border border-surface-200 text-surface-700 rounded-lg text-sm font-bold hover:bg-surface-50 transition-smooth shadow-sm flex items-center justify-center gap-2 uppercase tracking-wider">
               Explore Demo
             </Link>
           </div>
           
           {/* Visual Showcase */}
-          <div className="mt-24 relative max-w-5xl mx-auto">
-            <div className="absolute -inset-4 bg-gradient-to-tr from-blue-100/30 to-slate-100/30 rounded-[40px] -z-10 blur-2xl"></div>
-            <div className="bg-white rounded-[32px] border border-slate-100 shadow-2xl overflow-hidden p-3">
-              <div className="bg-slate-50 rounded-[22px] border border-slate-100/50 overflow-hidden relative">
-                {/* Mock terminal / dashboard UI */}
-                <div className="bg-[#0F172A] rounded-[18px] p-6">
-                  {/* Window chrome */}
-                  <div className="flex items-center gap-2 mb-5">
-                    <div className="w-3 h-3 rounded-full bg-rose-500/70"/>
-                    <div className="w-3 h-3 rounded-full bg-amber-500/70"/>
-                    <div className="w-3 h-3 rounded-full bg-emerald-500/70"/>
-                    <div className="flex-1 mx-4 h-6 bg-slate-800 rounded-lg flex items-center px-3">
-                      <span className="text-slate-500 text-[10px] font-mono">healix.app/dashboard</span>
-                    </div>
+          <div className="mt-20 relative max-w-4xl mx-auto">
+            <div className="absolute -inset-1.5 bg-surface-200/50 rounded-2xl -z-10 blur-sm" />
+            <div className="bg-white rounded-xl border border-surface-200 shadow-xl overflow-hidden p-1.5">
+              <div className="bg-surface-900 rounded-lg border border-surface-800 overflow-hidden text-left font-mono">
+                {/* Window chrome bar */}
+                <div className="bg-surface-800/80 px-4 py-3 flex items-center justify-between border-b border-surface-800">
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-3 h-3 rounded-full bg-red-500/80"/>
+                    <div className="w-3 h-3 rounded-full bg-amber-500/80"/>
+                    <div className="w-3 h-3 rounded-full bg-emerald-500/80"/>
                   </div>
-                  {/* Mock pipeline */}
-                  <div className="grid grid-cols-5 gap-2 mb-5">
-                    {['Detect','Gemini','GPT-OSS','Review','PR'].map((s, i) => (
-                      <div key={s} className={`rounded-lg p-2 text-center border ${i < 4 ? 'bg-blue-600/20 border-blue-500/30' : 'bg-emerald-600/20 border-emerald-500/30'}`}>
-                        <div className={`w-5 h-5 rounded-full mx-auto mb-1 flex items-center justify-center text-[9px] font-black ${i < 4 ? 'bg-blue-500 text-white' : 'bg-emerald-500 text-white'}`}>✓</div>
-                        <span className={`text-[9px] font-black uppercase tracking-widest ${i < 4 ? 'text-blue-400' : 'text-emerald-400'}`}>{s}</span>
+                  <span className="text-[10px] text-surface-400 font-semibold uppercase tracking-wider">healix-console // pipeline-logs</span>
+                  <div className="w-12" />
+                </div>
+                {/* Simulated Pipeline Log Trace */}
+                <div className="p-5 text-[11px] space-y-4">
+                  <div className="flex items-center gap-3 border-b border-surface-800 pb-3">
+                    <span className="px-2 py-0.5 bg-red-500/20 text-red-400 border border-red-500/20 rounded font-bold uppercase text-[9px] tracking-wider">Failed</span>
+                    <span className="text-surface-400 text-[10px]">CI run #3829 on main — build:test</span>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-5 gap-2 text-center text-[10px] py-1">
+                    {[
+                      { step: 'Detect', status: '✓ ok', color: 'text-emerald-400 border-emerald-900/40 bg-emerald-950/20' },
+                      { step: 'Analyze', status: '✓ ok', color: 'text-emerald-400 border-emerald-900/40 bg-emerald-950/20' },
+                      { step: 'Patch', status: '✓ ok', color: 'text-emerald-400 border-emerald-900/40 bg-emerald-950/20' },
+                      { step: 'Review', status: '✓ ok', color: 'text-emerald-400 border-emerald-900/40 bg-emerald-950/20' },
+                      { step: 'PR Open', status: '✓ ok', color: 'text-emerald-400 border-emerald-900/40 bg-emerald-950/20' }
+                    ].map((s, idx) => (
+                      <div key={idx} className={`border rounded p-2 ${s.color}`}>
+                        <div className="font-bold uppercase tracking-wider text-white mb-0.5">{s.step}</div>
+                        <div>{s.status}</div>
                       </div>
                     ))}
                   </div>
-                  {/* Mock patch diff */}
-                  <div className="bg-slate-900 rounded-xl p-4 font-mono text-[11px] space-y-1">
-                    <div className="text-slate-500">@@ -12,7 +12,7 @@ async function authenticate()</div>
-                    <div className="text-rose-400 bg-rose-500/10 px-2 rounded">- await auth.login(user)</div>
-                    <div className="text-emerald-400 bg-emerald-500/10 px-2 rounded">+ await auth.signIn({'{ provider: \'github\' }'})</div>
-                    <div className="text-slate-500 px-2">  return session</div>
+
+                  <div className="bg-surface-950 rounded p-4 border border-surface-800 space-y-1 overflow-x-auto">
+                    <div className="text-surface-500 text-[10px] pb-1">@@ -12,7 +12,7 @@ async function authenticate()</div>
+                    <div className="text-red-400 bg-red-950/25 px-2 rounded py-0.5">- await auth.login(user)</div>
+                    <div className="text-emerald-400 bg-emerald-950/30 px-2 rounded py-0.5">+ await auth.signIn({'{ provider: \'github\' }'})</div>
+                    <div className="text-surface-400 px-2">  return session</div>
                   </div>
-                  {/* Mock PR badge */}
-                  <div className="mt-4 flex items-center justify-between bg-emerald-900/30 border border-emerald-500/30 rounded-xl px-4 py-3">
-                    <div className="flex items-center gap-2">
-                      <div className="w-5 h-5 bg-emerald-500 rounded-full flex items-center justify-center">
-                        <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7"/></svg>
-                      </div>
-                      <span className="text-emerald-400 text-xs font-black">PR #42 opened — healix/fix-auth-handler</span>
+
+                  <div className="flex items-center justify-between bg-emerald-950/30 border border-emerald-800/40 rounded-lg px-4 py-3 text-[11px]">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-5 h-5 bg-emerald-600 rounded-full flex items-center justify-center text-white">✓</div>
+                      <span className="text-emerald-400 font-semibold">PR #107 opened — healix/fix-auth-handler</span>
                     </div>
-                    <span className="text-[10px] text-emerald-500 font-black uppercase tracking-widest">Merge →</span>
+                    <Link href="/dashboard" className="text-emerald-300 hover:text-emerald-200 font-bold uppercase tracking-wider text-[10px]">
+                      View Trace →
+                    </Link>
                   </div>
                 </div>
               </div>
@@ -113,110 +121,111 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Feature Bento Grid */}
-      <section id="features" className="py-32 px-6">
+      {/* Feature Section */}
+      <section id="features" className="py-24 px-6 border-t border-surface-200/50 bg-white">
         <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-24">
-            <h2 className="text-4xl md:text-5xl font-black tracking-tight mb-4">Engineered for Reliability.</h2>
-            <p className="text-slate-500 font-medium text-lg">Every layer of the Healix pipeline is designed to save you time.</p>
+          <div className="text-center mb-16">
+            <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight mb-3">Designed for background precision.</h2>
+            <p className="text-surface-500 font-medium max-w-xl mx-auto text-sm leading-relaxed">
+              Every layer of the pipeline is crafted to diagnose build failures with surgical accuracy and minimal overhead.
+            </p>
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <FeatureCard 
-              icon={<svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M13 10V3L4 14h7v7l9-11h-7z" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"/></svg>}
-              title="Real-time Webhooks"
-              description="Instantly reacts to GitHub workflow failures. No polling, no delay. Just immediate action."
-              color="blue"
+              icon={<Webhook className="w-5 h-5 text-brand-600" />}
+              title="Real-time Webhook Hooks"
+              description="Sub-second reaction to GitHub workflow failures. Listens directly to repo events and initiates diagnoses immediately."
             />
             <FeatureCard 
-              icon={<svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"/></svg>}
-              title="AI Validation"
-              description="A multi-agent review process ensures that only safe, minimal, and correct fixes are proposed."
-              color="emerald"
+              icon={<ShieldCheck className="w-5 h-5 text-emerald-600" />}
+              title="Multi-Agent Validation"
+              description="A systematic code-review layer parses generated patches. Ensures only safe, compiling, and minimal changes are promoted."
             />
             <FeatureCard 
-              icon={<svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"/></svg>}
-              title="MTTR Reduction"
-              description="Reduce Mean Time To Recovery from hours to seconds. Let your team focus on building."
-              color="slate"
+              icon={<Zap className="w-5 h-5 text-amber-600" />}
+              title="Mean-Time-To-Recovery (MTTR)"
+              description="Shave hours of debugging down to seconds. Automatically opens PRs on isolated fix branches for quick human approval."
             />
           </div>
         </div>
       </section>
 
-      {/* Workflow Section */}
-      <section id="how-it-works" className="py-32 bg-white border-y border-slate-100">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-20 items-center">
+      {/* Workflow Loop */}
+      <section id="how-it-works" className="py-24 px-6 bg-[#F8FAFC] border-t border-surface-200/50">
+        <div className="max-w-6xl mx-auto">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
             <div>
-              <h2 className="text-4xl md:text-5xl font-black tracking-tight mb-10 leading-tight">The 3-Step <br />Self-Healing Loop</h2>
-              <div className="space-y-10">
+              <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight mb-8">The Self-Healing Loop</h2>
+              <div className="space-y-8">
                 <WorkflowStep 
                   number="01" 
-                  title="Detect" 
-                  description="Healix listens to your repository. When a CI run fails, we capture the logs and stack traces instantly." 
+                  title="Detect failures" 
+                  description="Healix listens to your repository. When a CI run fails, we capture the logs, error reports, and stack traces instantly." 
                 />
                 <WorkflowStep 
                   number="02" 
-                  title="Analyze & Patch" 
-                  description="Gemini identifies the root cause. GPT-OSS-120B generates a surgical fix that solves the issue without bloat." 
+                  title="Analyze & generate patch" 
+                  description="Our parser isolates the root cause from the noise. The patch generation engine creates a surgical fix solving the error without bloat." 
                 />
                 <WorkflowStep 
                   number="03" 
-                  title="Verify & PR" 
-                  description="Our validator agent checks the fix. If approved, a PR is opened on a new branch automatically." 
+                  title="Review & open PR" 
+                  description="A dedicated validation step audits the patch. If safe, a pull request is automatically opened on a new branch." 
                 />
               </div>
             </div>
-            <div className="bg-slate-50 rounded-[48px] p-12 border border-slate-100 aspect-square flex items-center justify-center relative">
-               <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_rgb(219_234_254)_0%,_transparent_70%)] opacity-30"></div>
-               <div className="w-full h-full bg-white rounded-[36px] shadow-2xl border border-slate-100 flex flex-col p-8 overflow-hidden">
-                  <div className="flex items-center gap-2 mb-8">
-                    <div className="w-3 h-3 rounded-full bg-rose-400"></div>
-                    <div className="w-3 h-3 rounded-full bg-amber-400"></div>
-                    <div className="w-3 h-3 rounded-full bg-emerald-400"></div>
+            <div className="bg-white rounded-xl p-8 border border-surface-200/80 shadow-sm flex flex-col justify-center gap-6">
+              <div className="flex items-center gap-2 border-b border-surface-100 pb-4">
+                <div className="w-2.5 h-2.5 rounded-full bg-red-400" />
+                <span className="text-xs text-surface-500 font-bold uppercase tracking-wider">Simulation Run Trace</span>
+              </div>
+              <div className="space-y-4">
+                <div className="flex items-center gap-3">
+                  <span className="w-5 h-5 bg-brand-50 rounded-full flex items-center justify-center text-brand-600 text-xs font-bold">✓</span>
+                  <span className="text-xs font-semibold text-surface-700">Analyzed stack trace: resolved auth exception</span>
+                </div>
+                <div className="bg-emerald-50 border border-emerald-100 rounded-lg p-4 flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <GitPullRequest className="w-4 h-4 text-emerald-600" />
+                    <span className="text-xs font-bold text-emerald-800">Auto-fix patch verified</span>
                   </div>
-                  <div className="space-y-4">
-                    <div className="h-4 bg-slate-100 rounded-full w-3/4"></div>
-                    <div className="h-4 bg-slate-100 rounded-full w-1/2"></div>
-                    <div className="h-32 bg-emerald-50 border border-emerald-100 rounded-2xl flex items-center justify-center">
-                      <span className="text-emerald-600 font-black text-xs uppercase tracking-widest">Patch Generated</span>
-                    </div>
-                    <div className="h-4 bg-slate-100 rounded-full w-full"></div>
-                    <div className="h-4 bg-slate-100 rounded-full w-2/3"></div>
-                  </div>
-               </div>
+                  <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider">Ready</span>
+                </div>
+                <div className="h-3 bg-surface-100 rounded-full w-full"></div>
+                <div className="h-3 bg-surface-100 rounded-full w-5/6"></div>
+              </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Simple Footer */}
-      <footer className="py-20 bg-[#F8FAFC]">
-        <div className="max-w-7xl mx-auto px-6 border-t border-slate-200 pt-20">
-          <div className="flex flex-col md:flex-row justify-between items-start gap-12 mb-20">
+      {/* Clean Footer */}
+      <footer className="py-16 bg-white border-t border-surface-200/60">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="flex flex-col md:flex-row justify-between items-start gap-10 mb-12">
             <div>
-              <div className="flex items-center gap-2.5 mb-6">
-                <div className="w-8 h-8 bg-slate-900 rounded-lg flex items-center justify-center">
-                  <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                  </svg>
+              <div className="flex items-center gap-2.5 mb-4">
+                <div className="w-7 h-7 bg-surface-900 rounded-lg flex items-center justify-center">
+                  <RefreshCw className="w-3.5 h-3.5 text-white" />
                 </div>
-                <span className="text-xl font-black tracking-tight">Healix</span>
+                <span className="text-lg font-bold tracking-tight text-surface-900">Healix</span>
               </div>
-              <p className="max-w-xs text-slate-500 font-medium">Autonomous CI/CD recovery platform for high-performance engineering teams.</p>
+              <p className="max-w-xs text-xs text-surface-400 leading-relaxed font-medium">
+                Autonomous self-healing pipeline integrations for high-velocity software engineering teams.
+              </p>
             </div>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-16">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-12">
                <FooterCol title="Product" links={['Features', 'Dashboard', 'Changelog']} />
                <FooterCol title="Company" links={['About', 'Security', 'Contact']} />
                <FooterCol title="Legal" links={['Privacy', 'Terms', 'License']} />
             </div>
           </div>
-          <div className="flex justify-between items-center text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">
-            <span>© 2026 Healix AI Corp</span>
-            <div className="flex gap-8">
-              <a href="#" className="hover:text-blue-600 transition-colors">Twitter</a>
-              <a href="#" className="hover:text-blue-600 transition-colors">GitHub</a>
+          <div className="border-t border-surface-100 pt-8 flex justify-between items-center text-[10px] font-bold text-surface-400 uppercase tracking-widest">
+            <span>© 2026 Healix Corp</span>
+            <div className="flex gap-6">
+              <a href="#" className="hover:text-brand-600 transition-colors">Twitter</a>
+              <a href="#" className="hover:text-brand-600 transition-colors">GitHub</a>
             </div>
           </div>
         </div>
@@ -225,31 +234,25 @@ export default function HomePage() {
   );
 }
 
-function FeatureCard({ icon, title, description, color }: { icon: any; title: string; description: string; color: 'blue' | 'emerald' | 'slate' }) {
-  const colors = {
-    blue: 'bg-blue-50 text-blue-600 border-blue-100',
-    emerald: 'bg-emerald-50 text-emerald-600 border-emerald-100',
-    slate: 'bg-slate-100 text-slate-600 border-slate-200'
-  };
-  
+function FeatureCard({ icon, title, description }: { icon: React.ReactNode; title: string; description: string }) {
   return (
-    <div className="p-10 bg-white rounded-[32px] border border-slate-100 shadow-sm hover:shadow-xl transition-all hover:-translate-y-1 group">
-      <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-8 border ${colors[color]}`}>
+    <div className="p-8 bg-[#F8FAFC] rounded-xl border border-surface-200/60 transition-smooth hover:bg-white hover:border-surface-200 hover:shadow-md group">
+      <div className="w-10 h-10 rounded-lg bg-white border border-surface-200 flex items-center justify-center mb-6 shadow-sm group-hover:border-brand-100 group-hover:bg-brand-50/20 transition-smooth">
         {icon}
       </div>
-      <h3 className="text-2xl font-black tracking-tight mb-4">{title}</h3>
-      <p className="text-slate-500 font-medium leading-relaxed">{description}</p>
+      <h3 className="text-lg font-bold tracking-tight text-surface-900 mb-2">{title}</h3>
+      <p className="text-xs text-surface-500 font-medium leading-relaxed">{description}</p>
     </div>
   );
 }
 
 function WorkflowStep({ number, title, description }: { number: string; title: string; description: string }) {
   return (
-    <div className="flex gap-8 group">
-      <div className="text-5xl font-black text-slate-100 group-hover:text-blue-100 transition-colors">{number}</div>
-      <div>
-        <h4 className="text-2xl font-black mb-2 tracking-tight group-hover:text-blue-600 transition-colors">{title}</h4>
-        <p className="text-slate-500 font-medium leading-relaxed">{description}</p>
+    <div className="flex gap-4 group">
+      <div className="text-2xl font-bold text-surface-300 font-mono group-hover:text-brand-600 transition-colors">{number}</div>
+      <div className="space-y-1">
+        <h4 className="text-base font-bold text-surface-950 tracking-tight group-hover:text-brand-600 transition-colors">{title}</h4>
+        <p className="text-xs text-surface-500 font-medium leading-relaxed">{description}</p>
       </div>
     </div>
   );
@@ -257,12 +260,12 @@ function WorkflowStep({ number, title, description }: { number: string; title: s
 
 function FooterCol({ title, links }: { title: string; links: string[] }) {
   return (
-    <div className="space-y-6">
-      <h5 className="text-[10px] font-black text-slate-900 uppercase tracking-[0.2em]">{title}</h5>
-      <ul className="space-y-4">
+    <div className="space-y-4">
+      <h5 className="text-[10px] font-bold text-surface-900 uppercase tracking-widest">{title}</h5>
+      <ul className="space-y-2.5">
         {links.map(l => (
           <li key={l}>
-            <Link href="#" className="text-sm font-medium text-slate-500 hover:text-slate-900 transition-colors">{l}</Link>
+            <Link href="#" className="text-xs font-semibold text-surface-400 hover:text-surface-800 transition-colors">{l}</Link>
           </li>
         ))}
       </ul>

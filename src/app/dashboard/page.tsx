@@ -1,9 +1,32 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { SessionManager } from '@/lib/session-manager';
-import { getSession } from 'next-auth/react';
+import { getSession, signOut } from 'next-auth/react';
+import { 
+  Terminal, 
+  Settings, 
+  RefreshCw, 
+  BarChart2, 
+  ShieldAlert, 
+  GitBranch, 
+  GitPullRequest, 
+  Search, 
+  CheckCircle2, 
+  AlertCircle, 
+  HelpCircle, 
+  ArrowUpRight, 
+  LogOut,
+  SlidersHorizontal,
+  ChevronRight,
+  Database
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { DiffViewer } from '@/components/ui/diff-viewer';
 
 type AnalysisRun = {
   id: string; failureId: string; rootCause: string; category: string;
@@ -33,15 +56,11 @@ type Analytics = {
   riskLevelBreakdown: Record<string, number>;
 };
 
-const STATUS_COLOR: Record<string, string> = {
-  pending: 'bg-amber-400',
-  analyzing: 'bg-blue-400 animate-pulse',
-  analyzed: 'bg-emerald-500',
-  failed: 'bg-rose-500',
-};
-
-const CATEGORY_ICON: Record<string, string> = {
-  runtime: '⚡', build: '🔨', dependency: '📦', config: '⚙️',
+const CATEGORY_LABEL: Record<string, string> = {
+  runtime: '⚡ Runtime', 
+  build: '🔨 Build', 
+  dependency: '📦 Dependency', 
+  config: '⚙️ Configuration',
 };
 
 export default function DashboardPage() {
@@ -51,14 +70,20 @@ export default function DashboardPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [healing, setHealing] = useState(false);
+  const [isAuthed, setIsAuthed] = useState(false);
+  
+  // Search & filtering states
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
 
   const fetchAll = useCallback(async () => {
     try {
       const nextSession = await getSession();
-      const isAuthed = !!nextSession?.user;
+      const authed = !!nextSession?.user;
+      setIsAuthed(authed);
+      
       const localSess = SessionManager.get();
-
-      const urlSuffix = isAuthed ? '' : `?repos=${encodeURIComponent(localSess.repoFullName || '')}`;
+      const urlSuffix = authed ? '' : `?repos=${encodeURIComponent(localSess.repoFullName || '')}`;
 
       const [fRes, sRes, aRes] = await Promise.all([
         fetch(`/api/failures${urlSuffix}`),
@@ -71,7 +96,7 @@ export default function DashboardPage() {
 
       const items: FailureItem[] = fData.failures ?? [];
 
-      if (!isAuthed) {
+      if (!authed) {
         SessionManager.update({ 
           recentFailures: items.map(f => f.id),
           failuresCache: items,
@@ -99,7 +124,7 @@ export default function DashboardPage() {
     } finally {
       setLoading(false);
     }
-  }, []); // stable — no deps that change
+  }, []);
 
   useEffect(() => {
     fetchAll();
@@ -131,284 +156,641 @@ export default function DashboardPage() {
     }
   };
 
+  // Filter failures list based on query and status filter
+  const filteredFailures = useMemo(() => {
+    return failures.filter(f => {
+      const matchesSearch = 
+        f.repository.repoName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (f.branchName && f.branchName.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        f.commitSha.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (f.workflowName && f.workflowName.toLowerCase().includes(searchQuery.toLowerCase()));
+
+      const run = f.analysisRuns?.[0];
+      const actualStatus = run?.reviewStatus ?? f.status;
+      const matchesStatus = statusFilter === 'all' || actualStatus === statusFilter;
+
+      return matchesSearch && matchesStatus;
+    });
+  }, [failures, searchQuery, statusFilter]);
+
+  const getStatusBadge = (status: string, reviewStatus?: string | null) => {
+    const finalStatus = reviewStatus || status;
+    switch (finalStatus) {
+      case 'approved':
+      case 'analyzed':
+        return <Badge variant="success">Resolved</Badge>;
+      case 'failed':
+      case 'rejected':
+        return <Badge variant="error">Failed</Badge>;
+      case 'analyzing':
+        return (
+          <Badge variant="info" className="flex items-center gap-1">
+            <RefreshCw className="w-3 h-3 animate-spin" />
+            Analyzing
+          </Badge>
+        );
+      case 'pending':
+      default:
+        return <Badge variant="warning">Pending</Badge>;
+    }
+  };
+
   return (
-    <main className="min-h-screen bg-[#F8FAFC] text-[#0F172A]">
-      {/* Navbar */}
-      <nav className="bg-white/90 backdrop-blur-xl border-b border-slate-100 px-6 py-4 sticky top-0 z-40">
+    <div className="min-h-screen bg-[#F8FAFC] text-surface-900 font-sans flex flex-col">
+      {/* Navigation Header */}
+      <nav className="bg-white border-b border-surface-200/80 sticky top-0 z-40 px-6 py-3.5">
         <div className="max-w-[1600px] mx-auto flex items-center justify-between">
           <div className="flex items-center gap-8">
             <Link href="/" className="flex items-center gap-2.5 group">
-              <div className="w-9 h-9 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-100 group-hover:rotate-12 transition-transform">
-                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 10V3L4 14h7v7l9-11h-7z"/>
-                </svg>
+              <div className="w-7 h-7 bg-brand-600 rounded-lg flex items-center justify-center">
+                <RefreshCw className="w-4 h-4 text-white" />
               </div>
-              <span className="text-xl font-black tracking-tight">Healix</span>
+              <span className="text-lg font-bold tracking-tight text-surface-900">Healix</span>
             </Link>
-            <div className="hidden lg:flex items-center gap-6 text-[11px] font-black text-slate-400 uppercase tracking-widest">
-              <span className="text-blue-600 border-b-2 border-blue-600 pb-0.5">Overview</span>
-              <Link href="/dashboard/settings" className="hover:text-slate-800 transition-colors">Settings</Link>
+            
+            <div className="flex items-center gap-5 text-xs font-bold uppercase tracking-wider">
+              <span className="text-brand-600 border-b-2 border-brand-600 pb-1 px-0.5">Overview</span>
+              <Link href="/dashboard/settings" className="text-surface-500 hover:text-surface-900 transition-colors py-1">Settings</Link>
             </div>
           </div>
-          <div className="flex items-center gap-3">
-            <div className="px-3 py-1.5 bg-emerald-50 text-emerald-700 rounded-full border border-emerald-100 text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"/>
-              Live
+
+          <div className="flex items-center gap-4">
+            {/* Live indicator dot */}
+            <div className="px-2.5 py-1 bg-emerald-50 text-emerald-800 rounded-md border border-emerald-200/60 text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5 select-none">
+              <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
+              Live Feed
             </div>
-            <Link href="/dashboard/settings" className="w-9 h-9 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-center hover:bg-white transition-colors">
-              <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-              </svg>
-            </Link>
+            
+            {/* Session info */}
+            <div className="flex items-center gap-3">
+              <span className="hidden sm:inline-block text-xs font-semibold text-surface-450 border-r border-surface-200 pr-3">
+                {isAuthed ? 'Authorized' : 'Guest Space'}
+              </span>
+              <Link
+                href="/dashboard/settings"
+                className="w-8 h-8 rounded-lg bg-surface-50 border border-surface-200 flex items-center justify-center hover:bg-surface-100 transition-smooth text-surface-500 hover:text-surface-800"
+                title="Settings"
+              >
+                <Settings className="w-4 h-4" />
+              </Link>
+              {isAuthed ? (
+                <button
+                  onClick={() => signOut({ callbackUrl: '/' })}
+                  className="w-8 h-8 rounded-lg bg-surface-50 border border-surface-200 flex items-center justify-center hover:bg-red-50 hover:border-red-200 transition-smooth text-surface-500 hover:text-red-600 cursor-pointer"
+                  title="Sign Out"
+                >
+                  <LogOut className="w-4 h-4" />
+                </button>
+              ) : (
+                <button
+                  onClick={() => {
+                    if (confirm('Clear local guest session data?')) {
+                      SessionManager.reset();
+                      window.location.href = '/';
+                    }
+                  }}
+                  className="w-8 h-8 rounded-lg bg-surface-50 border border-surface-200 flex items-center justify-center hover:bg-red-50 hover:border-red-200 transition-smooth text-surface-500 hover:text-red-600 cursor-pointer"
+                  title="Reset Guest Cache"
+                >
+                  <LogOut className="w-4 h-4" />
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </nav>
 
-      <div className="max-w-[1600px] mx-auto px-6 py-8">
-        {/* Metrics row */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <MetricCard label="Total Analyzed" value={stats?.totalRuns ?? 0} sub="Pipeline runs processed" icon="📊"/>
-          <MetricCard label="Fix Success Rate" value={`${stats?.successRate ?? 0}%`} sub="AI patches approved" positive icon="✅"/>
-          <MetricCard label="Avg MTTR" value={`${((stats?.avgExecutionTimeMs ?? 0)/1000).toFixed(1)}s`} sub="Mean recovery time" icon="⏱"/>
-          <MetricCard label="Auto PRs" value={stats?.prsCreated ?? 0} sub="Autonomous pull requests" highlight icon="🔗"/>
+      {/* Main Workspace */}
+      <div className="max-w-[1600px] w-full mx-auto px-6 py-6 flex-1 flex flex-col gap-6">
+        
+        {/* Metric Cards Row */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <MetricCard 
+            label="Total Analyzed" 
+            value={stats?.totalRuns ?? 0} 
+            description="Pipeline runs processed" 
+            icon={<BarChart2 className="w-5 h-5 text-brand-600" />}
+            loading={loading && !stats}
+          />
+          <MetricCard 
+            label="Success Rate" 
+            value={`${stats?.successRate ?? 0}%`} 
+            description="AI repairs approved" 
+            icon={<CheckCircle2 className="w-5 h-5 text-emerald-600" />}
+            loading={loading && !stats}
+          />
+          <MetricCard 
+            label="Avg MTTR" 
+            value={stats ? `${((stats.avgExecutionTimeMs || 0)/1000).toFixed(1)}s` : '0.0s'} 
+            description="Mean recovery time" 
+            icon={<RefreshCw className="w-5 h-5 text-amber-600" />}
+            loading={loading && !stats}
+          />
+          <MetricCard 
+            label="Auto PRs Created" 
+            value={stats?.prsCreated ?? 0} 
+            description="Pull requests proposed" 
+            icon={<GitPullRequest className="w-5 h-5 text-indigo-600" />}
+            loading={loading && !stats}
+          />
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          {/* Failure Feed */}
-          <div className="lg:col-span-4">
-            <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden h-[820px] flex flex-col">
-              <div className="px-6 py-5 border-b border-slate-50 bg-slate-50/50 flex items-center justify-between">
-                <h2 className="text-base font-black tracking-tight">Failure Feed</h2>
-                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{failures.length} events</span>
-              </div>
-              <div className="flex-1 overflow-y-auto p-4 space-y-3">
-                {loading ? (
-                  <div className="space-y-3 animate-pulse">
-                    {[1,2,3,4].map(i => <div key={i} className="h-24 bg-slate-50 rounded-2xl border border-slate-100"/>)}
-                  </div>
-                ) : failures.length === 0 ? (
-                  <div className="py-16 text-center">
-                    <p className="text-4xl mb-3">🔍</p>
-                    <p className="text-sm font-bold text-slate-400">No failures yet</p>
-                    <p className="text-xs text-slate-300 mt-1">Connect a GitHub repo to start</p>
-                  </div>
-                ) : (
-                  failures.map(f => (
-                    <FailureCard key={f.id} f={f} selected={selectedId===f.id} onClick={() => setSelectedId(f.id)}/>
-                  ))
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Detail panel */}
-          <div className="lg:col-span-8 space-y-6">
-            {/* Pipeline Flow */}
-            <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-8">
-              <div className="flex items-center justify-between mb-8">
+        {/* Master-Detail Split Layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start flex-1">
+          
+          {/* Left Pane: Failure Feed List */}
+          <div className="lg:col-span-4 flex flex-col gap-4">
+            <Card className="h-[780px] flex flex-col border border-surface-200/80">
+              {/* Feed Header */}
+              <div className="px-5 py-4 border-b border-surface-150 bg-surface-50 flex items-center justify-between">
                 <div>
-                  <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest mb-1">AI Pipeline</p>
-                  <h2 className="text-2xl font-black tracking-tight">
-                    {selected ? selected.repository.repoName.split('/')[1] ?? selected.repository.repoName : 'Select a failure'}
-                  </h2>
+                  <h2 className="text-sm font-bold text-surface-900 tracking-tight">Failure Feed</h2>
+                  <p className="text-[10px] text-surface-450 font-semibold tracking-wider uppercase mt-0.5">
+                    {filteredFailures.length} incident{filteredFailures.length === 1 ? '' : 's'}
+                  </p>
                 </div>
-                {selected && (selected.status === 'pending' || selected.status === 'failed') && (
-                  <button
-                    onClick={triggerHeal}
-                    disabled={healing}
-                    className="px-5 py-2.5 bg-blue-600 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-blue-700 transition-all disabled:opacity-50 shadow-lg shadow-blue-100"
-                  >
-                    {healing ? 'Healing…' : selected.status === 'failed' ? '🔄 Retry Heal' : '⚡ Heal Now'}
-                  </button>
-                )}
-                {latestRun && (
-                  <span className={`px-4 py-1.5 rounded-xl text-xs font-black uppercase tracking-widest border ${
-                    latestRun.reviewStatus === 'approved'
-                      ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
-                      : latestRun.reviewStatus === 'rejected'
-                      ? 'bg-rose-50 text-rose-700 border-rose-100'
-                      : 'bg-amber-50 text-amber-700 border-amber-100'
-                  }`}>
-                    {latestRun.reviewStatus ?? selected?.status ?? 'pending'}
-                  </span>
+                
+                {/* Refresh loading indicator */}
+                {loading && (
+                  <RefreshCw className="w-3.5 h-3.5 text-brand-500 animate-spin" />
                 )}
               </div>
 
-              {!selected ? (
-                <div className="py-16 border-2 border-dashed border-slate-100 rounded-2xl text-center">
-                  <p className="text-slate-400 text-sm font-bold">Select a failure to view its trace</p>
+              {/* Feed Filters */}
+              <div className="p-4 border-b border-surface-100 bg-white flex flex-col gap-3">
+                <div className="relative">
+                  <Search className="w-4 h-4 text-surface-400 absolute left-3.5 top-3" />
+                  <input
+                    type="text"
+                    placeholder="Search repo, branch or commit..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full pl-9 pr-4 py-2 border border-surface-200 rounded-lg text-xs transition-smooth placeholder:text-surface-400 focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/10"
+                  />
                 </div>
-              ) : (
-                <div className="grid grid-cols-5 gap-3">
+                
+                {/* Status Tabs */}
+                <div className="flex gap-1.5 overflow-x-auto pb-1 text-[10px] font-bold uppercase tracking-wider border-b border-surface-100">
                   {[
-                    { label: 'Detect', done: true },
-                    { label: 'Gemini', done: !!latestRun },
-                    { label: 'GPT-OSS', done: !!latestRun?.patch },
-                    { label: 'Review', done: !!latestRun?.reviewStatus },
-                    { label: 'PR', done: !!latestRun?.prLink },
-                  ].map((step, i) => (
-                    <PipelineStep key={i} label={step.label} done={step.done} active={step.done}/>
+                    { id: 'all', label: 'All' },
+                    { id: 'pending', label: 'Pending' },
+                    { id: 'analyzing', label: 'Running' },
+                    { id: 'approved', label: 'Resolved' },
+                    { id: 'rejected', label: 'Rejected' },
+                  ].map(tab => (
+                    <button
+                      key={tab.id}
+                      onClick={() => setStatusFilter(tab.id)}
+                      className={`px-2.5 py-1 rounded transition-smooth whitespace-nowrap cursor-pointer ${
+                        statusFilter === tab.id 
+                          ? 'bg-surface-900 text-white' 
+                          : 'text-surface-500 hover:bg-surface-100 hover:text-surface-900'
+                      }`}
+                    >
+                      {tab.label}
+                    </button>
                   ))}
                 </div>
-              )}
-            </div>
+              </div>
 
-            {/* Analysis */}
-            {latestRun && (
-              <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-8">
-                <h3 className="text-base font-black mb-6 flex items-center gap-2">
-                  <span className="w-7 h-7 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center text-sm">🧠</span>
-                  AI Analysis
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                  <InfoChip label="Category" value={`${CATEGORY_ICON[latestRun.category] ?? '?'} ${latestRun.category}`}/>
-                  <InfoChip label="Confidence" value={`${(latestRun.confidence * 100).toFixed(0)}%`}/>
-                  <InfoChip label="Risk Level" value={latestRun.reviewRiskLevel ?? '—'}/>
+              {/* Scrollable list */}
+              <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-[#FBFDFE]">
+                {loading && failures.length === 0 ? (
+                  /* Feed Loader Skeleton */
+                  <div className="space-y-3">
+                    {[1, 2, 3, 4].map(i => (
+                      <div key={i} className="p-4 border border-surface-200 rounded-xl bg-white space-y-2">
+                        <div className="flex justify-between items-center">
+                          <div className="h-4 bg-surface-100 rounded w-16 animate-shimmer" />
+                          <div className="h-3 bg-surface-100 rounded w-12 animate-shimmer" />
+                        </div>
+                        <div className="h-5 bg-surface-100 rounded w-3/4 animate-shimmer" />
+                        <div className="h-3 bg-surface-100 rounded w-1/2 animate-shimmer" />
+                      </div>
+                    ))}
+                  </div>
+                ) : filteredFailures.length === 0 ? (
+                  /* Empty state inside feed */
+                  <div className="py-16 text-center space-y-3 select-none">
+                    <Database className="w-8 h-8 text-surface-300 mx-auto" />
+                    <div>
+                      <p className="text-xs font-bold text-surface-700">No matching events found</p>
+                      {failures.length === 0 ? (
+                        <p className="text-[11px] text-surface-400 mt-1">Connect a repository in settings to capture failure hooks.</p>
+                      ) : (
+                        <p className="text-[11px] text-surface-400 mt-1">Try clearing your filters or query search.</p>
+                      )}
+                    </div>
+                    {failures.length === 0 && (
+                      <Link href="/dashboard/settings" className="inline-block mt-3">
+                        <Button variant="outline" size="sm">Configure Settings</Button>
+                      </Link>
+                    )}
+                  </div>
+                ) : (
+                  filteredFailures.map(f => {
+                    const run = f.analysisRuns?.[0];
+                    const isSelected = selectedId === f.id;
+                    return (
+                      <button
+                        key={f.id}
+                        onClick={() => setSelectedId(f.id)}
+                        className={`w-full p-4 text-left rounded-xl border transition-smooth flex flex-col gap-2.5 cursor-pointer ${
+                          isSelected 
+                            ? 'bg-white border-brand-500 shadow-md ring-1 ring-brand-500/10' 
+                            : 'bg-white border-surface-200/80 hover:border-surface-300 hover:shadow-sm'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between w-full">
+                          <span className="font-mono text-[10px] font-bold text-surface-400 uppercase bg-surface-50 px-2 py-0.5 rounded border border-surface-200/30">
+                            {f.commitSha.slice(0, 7)}
+                          </span>
+                          <span className="text-[10px] text-surface-450 font-medium">
+                            {new Date(f.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        </div>
+
+                        <div>
+                          <p className="font-bold text-xs text-surface-900 truncate">
+                            {f.repository.repoName}
+                          </p>
+                          {f.workflowName && (
+                            <p className="text-[10px] text-surface-450 font-medium truncate mt-0.5 flex items-center gap-1">
+                              <Terminal className="w-3 h-3 text-surface-400 flex-shrink-0" />
+                              {f.workflowName}
+                            </p>
+                          )}
+                        </div>
+
+                        <div className="flex items-center justify-between border-t border-surface-100 pt-2.5 w-full">
+                          <div className="flex items-center gap-2">
+                            {getStatusBadge(f.status, run?.reviewStatus)}
+                          </div>
+                          
+                          {f.branchName && (
+                            <div className="flex items-center gap-1 text-[10px] font-mono text-surface-500 truncate max-w-[150px]">
+                              <GitBranch className="w-3 h-3 flex-shrink-0" />
+                              <span className="truncate">{f.branchName}</span>
+                            </div>
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })
+                )}
+              </div>
+            </Card>
+          </div>
+
+          {/* Right Pane: Incident Trace Details */}
+          <div className="lg:col-span-8 flex flex-col gap-6">
+            
+            {/* Header / Pipeline Overview Card */}
+            <Card className="border border-surface-200/80">
+              <CardHeader className="flex flex-row items-start justify-between flex-wrap gap-4 border-b border-surface-100">
+                <div className="space-y-1">
+                  <span className="text-[10px] font-bold text-brand-600 uppercase tracking-widest">Incident Diagnostic</span>
+                  <h1 className="text-xl font-extrabold tracking-tight text-surface-900">
+                    {selected ? selected.repository.repoName : 'Select a failure'}
+                  </h1>
+                  {selected?.branchName && (
+                    <div className="flex items-center gap-1.5 text-xs text-surface-500 font-mono mt-1">
+                      <GitBranch className="w-3.5 h-3.5" />
+                      <span>{selected.branchName}</span>
+                      <span className="text-surface-300">•</span>
+                      <span>SHA: {selected.commitSha.slice(0, 8)}</span>
+                    </div>
+                  )}
                 </div>
-                <div className="bg-slate-50 rounded-2xl border border-slate-100 p-5 mb-6">
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Root Cause</p>
-                  <p className="text-slate-800 font-semibold text-sm leading-relaxed">{latestRun.rootCause}</p>
-                </div>
-                {latestRun.reviewReason && (
-                  <div className={`rounded-2xl border p-4 mb-6 ${latestRun.reviewStatus === 'approved' ? 'bg-emerald-50 border-emerald-100' : 'bg-rose-50 border-rose-100'}`}>
-                    <p className="text-[10px] font-black uppercase tracking-widest mb-1 ${latestRun.reviewStatus === 'approved' ? 'text-emerald-600' : 'text-rose-600'}">Reviewer Verdict</p>
-                    <p className="text-sm font-semibold text-slate-700">{latestRun.reviewReason}</p>
+
+                {selected && (
+                  <div className="flex items-center gap-3">
+                    {/* Trigger Manual Healing Action */}
+                    {(selected.status === 'pending' || selected.status === 'failed') && (
+                      <Button
+                        onClick={triggerHeal}
+                        isLoading={healing}
+                        size="sm"
+                        variant={selected.status === 'failed' ? 'outline' : 'primary'}
+                      >
+                        {healing ? 'Analyzing...' : selected.status === 'failed' ? 'Retry Heal' : 'Initiate Fix'}
+                      </Button>
+                    )}
+                    {latestRun ? (
+                      getStatusBadge(selected.status, latestRun.reviewStatus)
+                    ) : (
+                      <Badge variant="warning">Pending</Badge>
+                    )}
                   </div>
                 )}
-                {latestRun.patch && (
-                  <div className="rounded-2xl overflow-hidden border border-slate-200 shadow-sm">
-                    <div className="bg-[#0F172A] px-5 py-3 flex items-center justify-between">
-                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Patch Diff</span>
-                      <div className="flex gap-1.5">
-                        <span className="w-2.5 h-2.5 rounded-full bg-rose-500/50"/>
-                        <span className="w-2.5 h-2.5 rounded-full bg-amber-500/50"/>
-                        <span className="w-2.5 h-2.5 rounded-full bg-emerald-500/50"/>
-                      </div>
+              </CardHeader>
+
+              <CardContent className="p-6">
+                {!selected ? (
+                  /* Select state empty illustration */
+                  <div className="py-20 text-center space-y-3">
+                    <Terminal className="w-10 h-10 text-surface-300 mx-auto" />
+                    <div>
+                      <h3 className="text-sm font-bold text-surface-700">No Incident Loaded</h3>
+                      <p className="text-xs text-surface-450 max-w-xs mx-auto mt-1">Select an item from the feed on the left to read failure traces and review proposed fixes.</p>
                     </div>
-                    <div className="bg-[#0F172A] p-5 overflow-x-auto max-h-80">
-                      <pre className="text-xs font-mono leading-relaxed">
-                        {latestRun.patch.split('\n').map((line, i) => (
-                          <div key={i} className={`py-0.5 ${line.startsWith('+') ? 'text-emerald-400' : line.startsWith('-') ? 'text-rose-400' : 'text-slate-500'}`}>
-                            {line}
+                  </div>
+                ) : (
+                  /* Active Trace Details */
+                  <div className="space-y-6">
+                    {/* Pipeline Stage Indicators */}
+                    <div className="space-y-3">
+                      <h3 className="text-xs font-bold text-surface-700 uppercase tracking-wider">Pipeline Flow status</h3>
+                      <div className="grid grid-cols-5 gap-2 text-center">
+                        {[
+                          { label: 'Detect', active: true, done: true },
+                          { label: 'Analyze', active: !!latestRun, done: !!latestRun },
+                          { label: 'Patch', active: !!latestRun?.patch, done: !!latestRun?.patch },
+                          { label: 'Review', active: !!latestRun?.reviewStatus, done: !!latestRun?.reviewStatus },
+                          { label: 'PR Opened', active: !!latestRun?.prLink, done: !!latestRun?.prLink },
+                        ].map((step, idx) => (
+                          <div
+                            key={idx}
+                            className={`p-3 rounded-lg border transition-smooth flex flex-col items-center gap-1.5 ${
+                              step.active 
+                                ? 'bg-surface-50 border-surface-200' 
+                                : 'bg-surface-50/50 border-surface-200/40 opacity-40'
+                            }`}
+                          >
+                            <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+                              step.done 
+                                ? 'bg-brand-500 text-white shadow-sm' 
+                                : 'bg-surface-200 text-surface-400'
+                            }`}>
+                              {step.done ? '✓' : '•'}
+                            </div>
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-surface-600">
+                              {step.label}
+                            </span>
                           </div>
                         ))}
-                      </pre>
-                    </div>
-                  </div>
-                )}
-                {latestRun.prLink && (
-                  <div className="mt-6 p-6 bg-blue-50 rounded-2xl border border-blue-100 flex items-center justify-between">
-                    <div>
-                      <p className="font-black text-blue-900 text-sm">Pull Request Opened</p>
-                      <p className="text-xs text-blue-700/70 mt-0.5">Branch: {latestRun.prBranch ?? 'healix/fix'}</p>
-                    </div>
-                    <a href={latestRun.prLink} target="_blank" rel="noreferrer"
-                      className="px-5 py-2.5 bg-blue-600 text-white rounded-xl font-black text-xs uppercase tracking-widest hover:bg-blue-700 transition-all shadow-md shadow-blue-100">
-                      View PR
-                    </a>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Analytics bottom row */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-7">
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-5">Category Breakdown</p>
-                <div className="space-y-3">
-                  {analytics && Object.keys(analytics.categoryBreakdown).length > 0
-                    ? Object.entries(analytics.categoryBreakdown).map(([cat, count]) => (
-                      <div key={cat} className="flex items-center justify-between">
-                        <span className="text-xs font-semibold text-slate-600">{CATEGORY_ICON[cat]} {cat}</span>
-                        <span className="text-xs font-black text-slate-900">{count}</span>
                       </div>
-                    ))
-                    : <p className="text-sm text-slate-300 text-center py-4">No data yet</p>
-                  }
-                </div>
-              </div>
-              <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-7">
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-5">Risk Distribution</p>
-                <div className="space-y-3">
-                  {analytics && Object.keys(analytics.riskLevelBreakdown).length > 0
-                    ? Object.entries(analytics.riskLevelBreakdown).map(([risk, count]) => {
-                      const colors: Record<string,string> = { low:'text-emerald-600', medium:'text-amber-600', high:'text-rose-600' };
-                      return (
-                        <div key={risk} className="flex items-center justify-between">
-                          <span className={`text-xs font-semibold capitalize ${colors[risk] ?? 'text-slate-600'}`}>{risk}</span>
-                          <span className="text-xs font-black text-slate-900">{count}</span>
+                    </div>
+
+                    {/* AI Diagnostics details */}
+                    {latestRun ? (
+                      <div className="space-y-6 pt-4 border-t border-surface-150">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                          {/* Info chips */}
+                          <div className="bg-surface-50 rounded-lg border border-surface-200 p-3">
+                            <span className="text-[9px] font-bold text-surface-450 uppercase tracking-widest block">Root Cause Type</span>
+                            <span className="text-xs font-bold text-surface-800 mt-1 block">
+                              {CATEGORY_LABEL[latestRun.category] || latestRun.category}
+                            </span>
+                          </div>
+
+                          <div className="bg-surface-50 rounded-lg border border-surface-200 p-3">
+                            <span className="text-[9px] font-bold text-surface-450 uppercase tracking-widest block">Confidence Score</span>
+                            <div className="flex items-center gap-2 mt-1">
+                              <span className="text-xs font-bold text-surface-800">
+                                {(latestRun.confidence * 100).toFixed(0)}%
+                              </span>
+                              <div className="flex-1 h-1.5 bg-surface-200 rounded-full overflow-hidden">
+                                <div 
+                                  className="h-full bg-brand-500 rounded-full" 
+                                  style={{ width: `${latestRun.confidence * 100}%` }}
+                                />
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="bg-surface-50 rounded-lg border border-surface-200 p-3">
+                            <span className="text-[9px] font-bold text-surface-450 uppercase tracking-widest block">Risk Assessment</span>
+                            <span className="text-xs font-bold text-surface-800 mt-1 block">
+                              {latestRun.reviewRiskLevel ? (
+                                <span className={`capitalize ${
+                                  latestRun.reviewRiskLevel === 'high' ? 'text-red-600' :
+                                  latestRun.reviewRiskLevel === 'medium' ? 'text-amber-600' : 'text-emerald-600'
+                                }`}>
+                                  {latestRun.reviewRiskLevel} Risk
+                                </span>
+                              ) : (
+                                '—'
+                              )}
+                            </span>
+                          </div>
                         </div>
-                      );
-                    })
-                    : <p className="text-sm text-slate-300 text-center py-4">No data yet</p>
-                  }
-                </div>
-              </div>
+
+                        {/* Root Cause Details */}
+                        <div className="bg-surface-50 border border-surface-200 rounded-lg p-5">
+                          <span className="text-[10px] font-bold text-surface-450 uppercase tracking-wider block mb-2">Diagnostic Root Cause</span>
+                          <p className="text-xs text-surface-850 leading-relaxed font-semibold">
+                            {latestRun.rootCause}
+                          </p>
+                        </div>
+
+                        {/* Verdict / Review details */}
+                        {latestRun.reviewReason && (
+                          <div className={`p-4 rounded-lg border ${
+                            latestRun.reviewStatus === 'approved' 
+                              ? 'bg-emerald-50/60 border-emerald-200/60 text-emerald-800' 
+                              : 'bg-red-50/60 border-red-200/60 text-red-800'
+                          }`}>
+                            <div className="flex items-center gap-2 mb-1.5">
+                              {latestRun.reviewStatus === 'approved' ? (
+                                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                              ) : (
+                                <AlertCircle className="w-4 h-4 text-red-600" />
+                              )}
+                              <span className="text-[10px] font-bold uppercase tracking-wider">
+                                Validator Verdict ({latestRun.reviewStatus})
+                              </span>
+                            </div>
+                            <p className="text-xs font-semibold leading-relaxed">
+                              {latestRun.reviewReason}
+                            </p>
+                          </div>
+                        )}
+
+                        {/* Custom Patch Diff Viewer */}
+                        {latestRun.patch && (
+                          <div className="space-y-2">
+                            <span className="text-[10px] font-bold text-surface-450 uppercase tracking-wider block">Generated Fix Patch</span>
+                            <DiffViewer patch={latestRun.patch} filename={latestRun.affectedFile} />
+                          </div>
+                        )}
+
+                        {/* PR integration Alert */}
+                        {latestRun.prLink && (
+                          <div className="p-4 bg-brand-50 border border-brand-200/60 rounded-lg flex items-center justify-between flex-wrap gap-4">
+                            <div className="space-y-1">
+                              <h4 className="text-xs font-bold text-brand-850 flex items-center gap-1.5">
+                                <GitPullRequest className="w-4 h-4 text-brand-600" />
+                                Autonomous Pull Request Opened
+                              </h4>
+                              <p className="text-[11px] text-brand-700/80 font-mono">
+                                Target Branch: {latestRun.prBranch ?? 'healix/fix'}
+                              </p>
+                            </div>
+                            <a
+                              href={latestRun.prLink}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="px-3.5 py-1.5 bg-brand-600 text-white rounded-md text-xs font-bold hover:bg-brand-700 transition-smooth flex items-center gap-1"
+                            >
+                              <span>View PR on GitHub</span>
+                              <ArrowUpRight className="w-3.5 h-3.5" />
+                            </a>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      /* Logs or status details if no analysis run exists yet */
+                      <div className="bg-surface-50 border border-surface-200 rounded-lg p-5 space-y-4">
+                        <div className="flex items-center gap-2 border-b border-surface-200 pb-3">
+                          <span className="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse" />
+                          <span className="text-xs font-bold text-surface-700">Diagnostic Pending</span>
+                        </div>
+                        <div className="space-y-3 font-mono text-[11px] text-surface-600">
+                          {selected.errorSummary ? (
+                            <div className="space-y-1.5">
+                              <span className="text-[10px] font-bold text-surface-450 uppercase tracking-wider block">Captured Error Summary</span>
+                              <pre className="bg-white border border-surface-200 rounded p-3 text-red-650 overflow-x-auto max-h-40 leading-relaxed whitespace-pre-wrap">
+                                {selected.errorSummary}
+                              </pre>
+                            </div>
+                          ) : (
+                            <p className="italic">No diagnostics generated yet. Click "Initiate Fix" above to analyze this failure run.</p>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Bottom Panel: Incident charts and aggregates */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              
+              {/* Category Breakdown Chart */}
+              <Card className="border border-surface-200/80">
+                <CardHeader className="py-4 border-b border-surface-100">
+                  <CardTitle className="text-xs uppercase tracking-wider text-surface-500 font-bold">Category Distribution</CardTitle>
+                </CardHeader>
+                <CardContent className="p-5">
+                  {analytics && Object.keys(analytics.categoryBreakdown).length > 0 ? (
+                    <div className="space-y-3">
+                      {Object.entries(analytics.categoryBreakdown).map(([cat, count]) => {
+                        const total = Object.values(analytics.categoryBreakdown).reduce((a, b) => a + b, 0);
+                        const percentage = total > 0 ? (count / total) * 100 : 0;
+                        return (
+                          <div key={cat} className="space-y-1">
+                            <div className="flex justify-between items-center text-xs">
+                              <span className="font-semibold text-surface-750">
+                                {CATEGORY_LABEL[cat] || cat}
+                              </span>
+                              <span className="font-bold text-surface-900">{count}</span>
+                            </div>
+                            <div className="h-2 bg-surface-100 rounded-full overflow-hidden">
+                              <div 
+                                className="h-full bg-brand-500 rounded-full transition-all duration-500"
+                                style={{ width: `${percentage}%` }}
+                              />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="py-6 text-center text-xs text-surface-400 italic">No breakdown data available.</div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Risk Distribution Chart */}
+              <Card className="border border-surface-200/80">
+                <CardHeader className="py-4 border-b border-surface-100">
+                  <CardTitle className="text-xs uppercase tracking-wider text-surface-500 font-bold">Risk Assessment Index</CardTitle>
+                </CardHeader>
+                <CardContent className="p-5">
+                  {analytics && Object.keys(analytics.riskLevelBreakdown).length > 0 ? (
+                    <div className="space-y-3">
+                      {Object.entries(analytics.riskLevelBreakdown).map(([risk, count]) => {
+                        const total = Object.values(analytics.riskLevelBreakdown).reduce((a, b) => a + b, 0);
+                        const percentage = total > 0 ? (count / total) * 100 : 0;
+                        
+                        const colorMap: Record<string, string> = {
+                          low: 'bg-emerald-500',
+                          medium: 'bg-amber-500',
+                          high: 'bg-red-500',
+                        };
+                        const textColors: Record<string, string> = {
+                          low: 'text-emerald-700',
+                          medium: 'text-amber-700',
+                          high: 'text-red-700',
+                        };
+
+                        return (
+                          <div key={risk} className="space-y-1">
+                            <div className="flex justify-between items-center text-xs">
+                              <span className={`font-bold capitalize ${textColors[risk] || 'text-surface-700'}`}>
+                                {risk}
+                              </span>
+                              <span className="font-bold text-surface-900">{count}</span>
+                            </div>
+                            <div className="h-2 bg-surface-100 rounded-full overflow-hidden">
+                              <div 
+                                className={`h-full ${colorMap[risk] || 'bg-brand-500'} rounded-full transition-all duration-500`}
+                                style={{ width: `${percentage}%` }}
+                              />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="py-6 text-center text-xs text-surface-400 italic">No risk distribution data available.</div>
+                  )}
+                </CardContent>
+              </Card>
+
             </div>
           </div>
+
         </div>
       </div>
-    </main>
-  );
-}
-
-function MetricCard({ label, value, sub, icon, highlight, positive }: {
-  label: string; value: string | number; sub: string; icon: string;
-  highlight?: boolean; positive?: boolean;
-}) {
-  return (
-    <div className={`p-6 rounded-3xl border transition-all hover:shadow-lg ${highlight ? 'bg-slate-900 border-slate-900 text-white' : 'bg-white border-slate-100'}`}>
-      <div className="flex items-center justify-between mb-4">
-        <span className="text-2xl">{icon}</span>
-        {positive && <span className="w-2 h-2 rounded-full bg-emerald-400 shadow shadow-emerald-200"/>}
-      </div>
-      <p className="text-3xl font-black tracking-tight mb-1">{value}</p>
-      <p className={`text-[10px] font-black uppercase tracking-widest ${highlight ? 'text-slate-400' : 'text-slate-800'}`}>{label}</p>
-      <p className={`text-[10px] mt-0.5 ${highlight ? 'text-slate-500' : 'text-slate-400'}`}>{sub}</p>
     </div>
   );
 }
 
-function FailureCard({ f, selected, onClick }: { f: FailureItem; selected: boolean; onClick: () => void }) {
-  const run = f.analysisRuns?.[0];
-  return (
-    <button onClick={onClick}
-      className={`w-full p-5 text-left rounded-2xl border transition-all duration-200 ${selected ? 'bg-white border-blue-200 shadow-lg ring-1 ring-blue-50 scale-[1.01]' : 'bg-white border-slate-100 hover:border-slate-200 hover:shadow-md'}`}>
-      <div className="flex items-center justify-between mb-2">
-        <span className={`px-2 py-0.5 rounded-md font-mono text-[10px] font-black ${selected ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-500'}`}>
-          {f.commitSha.slice(0, 7)}
-        </span>
-        <span className="text-[10px] text-slate-400">{new Date(f.createdAt).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}</span>
-      </div>
-      <p className="font-black text-sm text-slate-900 truncate mb-1">{f.repository.repoName.split('/').pop()}</p>
-      {f.workflowName && <p className="text-[10px] text-slate-400 truncate mb-2">{f.workflowName}</p>}
-      <div className="flex items-center gap-2">
-        <span className={`w-1.5 h-1.5 rounded-full ${STATUS_COLOR[f.status] ?? 'bg-slate-300'}`}/>
-        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-          {run?.reviewStatus ?? f.status}
-        </span>
-        {run?.prLink && <span className="ml-auto text-blue-500 text-xs">PR ↗</span>}
-      </div>
-    </button>
-  );
+/* Sub-components for Layout Organization */
+interface MetricCardProps {
+  label: string;
+  value: string | number;
+  description: string;
+  icon: React.ReactNode;
+  loading?: boolean;
 }
 
-function PipelineStep({ label, done, active }: { label: string; done: boolean; active: boolean }) {
+function MetricCard({ label, value, description, icon, loading = false }: MetricCardProps) {
   return (
-    <div className={`p-3 rounded-xl border flex flex-col items-center gap-2 transition-all ${active ? 'bg-blue-50 border-blue-100' : 'bg-slate-50 border-slate-100 opacity-40'}`}>
-      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-black ${done ? 'bg-blue-600 text-white shadow-md shadow-blue-100' : 'bg-slate-200 text-slate-400'}`}>
-        {done ? '✓' : '·'}
-      </div>
-      <span className={`text-[10px] font-black uppercase tracking-widest ${active ? 'text-blue-600' : 'text-slate-400'}`}>{label}</span>
-    </div>
-  );
-}
-
-function InfoChip({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="bg-slate-50 rounded-xl border border-slate-100 p-3">
-      <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">{label}</p>
-      <p className="text-sm font-black text-slate-800 capitalize">{value}</p>
-    </div>
+    <Card className="border border-surface-200/80 transition-smooth hover:border-surface-300 hover:shadow-sm">
+      <CardContent className="p-5 flex items-start justify-between">
+        <div className="space-y-1 flex-1">
+          <span className="text-[10px] font-bold text-surface-450 uppercase tracking-wider block">
+            {label}
+          </span>
+          {loading ? (
+            <div className="h-9 bg-surface-100 rounded w-20 animate-shimmer" />
+          ) : (
+            <p className="text-2xl font-extrabold tracking-tight text-surface-900 leading-none">
+              {value}
+            </p>
+          )}
+          <span className="text-[10px] text-surface-400 font-semibold block pt-1">
+            {description}
+          </span>
+        </div>
+        <div className="w-10 h-10 rounded-lg bg-surface-50 border border-surface-200/60 flex items-center justify-center flex-shrink-0">
+          {icon}
+        </div>
+      </CardContent>
+    </Card>
   );
 }
