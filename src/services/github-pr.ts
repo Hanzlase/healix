@@ -22,15 +22,19 @@ async function getDefaultBranch(octokit: Octokit, params: { owner: string; repo:
 type FileUpdate = { path: string; content: string };
 
 function extractUnifiedDiffFileTargets(patch: string): Array<{ path: string; filePatch: string }> {
-  // Split multi-file diffs by "diff --git" boundaries.
-  const parts = patch.split(/^diff --git /gm).filter(Boolean);
+  // Split multi-file diffs by "diff --git" or "--- a/" boundaries.
+  const parts = patch.split(/^(?=diff --git |--- a\/)/gm).filter(Boolean);
   return parts
-    .map((p) => 'diff --git ' + p)
     .map((filePatch) => {
-      const m = /^diff --git a\/(.+?) b\/(.+?)\r?$/m.exec(filePatch);
-      if (!m) return null;
-      const path = m[2];
-      return { path, filePatch };
+      const mGit = /^diff --git a\/(.+?) b\/(.+?)\r?$/m.exec(filePatch);
+      if (mGit) {
+        return { path: mGit[2], filePatch };
+      }
+      const mHeader = /^--- a\/(.+?)\r?\n^\+\+\+ b\/(.+?)\r?$/m.exec(filePatch);
+      if (mHeader) {
+        return { path: mHeader[2], filePatch };
+      }
+      return null;
     })
     .filter((x): x is { path: string; filePatch: string } => !!x);
 }
@@ -115,6 +119,17 @@ export async function createFixPullRequest(params: {
   const defaultBranch = await getDefaultBranch(octokit, { owner: params.owner, repo: params.repo });
 
   const branch = `healix/fix-${params.baseSha.slice(0, 7)}`;
+
+  // Attempt to delete existing branch if it exists from a previous run to start fresh
+  try {
+    await octokit.git.deleteRef({
+      owner: params.owner,
+      repo: params.repo,
+      ref: `heads/${branch}`,
+    });
+  } catch (err) {
+    // Ignore error if the branch doesn't exist yet
+  }
 
   // Create branch from default branch head
   const baseRef = await octokit.git.getRef({ owner: params.owner, repo: params.repo, ref: `heads/${defaultBranch}` });
