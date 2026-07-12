@@ -16,7 +16,6 @@ export type GeneratedPatch = {
 
 export async function generatePatch(input: PatchGeneratorInput): Promise<GeneratedPatch> {
   const client = getGroqClient();
-
   const system =
     'You are an autonomous CI fix generator (GPT-OSS-120B). ' +
     'Generate a minimal, precise code fix for a CI/CD failure. ' +
@@ -25,6 +24,7 @@ export async function generatePatch(input: PatchGeneratorInput): Promise<Generat
     '- Fix ONLY what caused failure ' +
     '- No style changes ' +
     '- No extra features ' +
+    '- When adjusting GITHUB_TOKEN permissions, use only the absolute minimal read permissions required (e.g. `actions: read`, `contents: read`). DO NOT grant write permissions (such as `actions: write`, `checks: write`, or `pull-requests: write`) unless a failed step explicitly needs to write resources. ' +
     '- Output MUST be ONLY the code patch in unified diff format (- old, + fixed) or a full file replacement. ' +
     '- NO markdown, NO backticks, NO explanations. Just the code.';
 
