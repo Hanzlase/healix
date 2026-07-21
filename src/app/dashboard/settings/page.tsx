@@ -134,7 +134,7 @@ export default function SettingsPage() {
       setRepos(prev => [data, ...prev.filter(r => r.repoName !== data.repoName)]);
       setRepoInput('');
       setGithubTokenInput('');
-      setAddSuccess(`✓ Connected ${cleanRepo} successfully!`);
+      setAddSuccess(`Connected ${cleanRepo} successfully!`);
       setTimeout(() => setAddSuccess(''), 4000);
     } catch { 
       setAddError('Could not add repository. Ensure it exists and has webhook configurations.'); 
@@ -420,7 +420,10 @@ export default function SettingsPage() {
               
               {showWebhookGuide && (
                 <div className="p-5 bg-surface-50 border border-surface-200 rounded-lg text-xs space-y-4">
-                  <h4 className="font-bold text-surface-900">📖 Webhook Installation Instructions</h4>
+                  <h4 className="font-bold text-surface-900 flex items-center gap-2">
+                    <BookOpen className="w-4 h-4 text-brand-600" />
+                    <span>Webhook Installation Guide</span>
+                  </h4>
                   <ol className="list-decimal pl-4 space-y-2.5 text-surface-650 font-medium">
                     <li>
                       Navigate to your GitHub repository &rarr; <strong>Settings</strong> &rarr; <strong>Webhooks</strong> &rarr; Click <strong>Add Webhook</strong>.

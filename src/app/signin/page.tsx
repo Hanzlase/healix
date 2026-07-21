@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import { signIn } from 'next-auth/react';
-import { RefreshCw } from 'lucide-react';
+import { RefreshCw, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
@@ -155,10 +155,11 @@ export default function SignInPage() {
                 Create one
               </Link>
             </p>
-            <p className="text-surface-450">
-              Or explore instantly{' '}
-              <Link href="/dashboard" className="text-surface-700 hover:text-surface-900 transition-colors underline underline-offset-4">
-                Continue as Guest →
+            <p className="text-surface-450 flex items-center justify-center gap-1">
+              <span>Or explore instantly</span>
+              <Link href="/dashboard" className="text-surface-700 hover:text-surface-900 transition-colors underline underline-offset-4 inline-flex items-center gap-1">
+                <span>Continue as Guest</span>
+                <ArrowRight className="w-3.5 h-3.5" />
               </Link>
             </p>
           </div>

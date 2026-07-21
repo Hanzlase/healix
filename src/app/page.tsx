@@ -1,30 +1,30 @@
 import Link from 'next/link';
-import { ArrowRight, Webhook, ShieldCheck, Zap, RefreshCw, GitPullRequest, Search, FileText } from 'lucide-react';
+import { ArrowRight, Webhook, ShieldCheck, Zap, RefreshCw, GitPullRequest, Search, FileText, Check, CheckCircle2, Cpu, Sparkles } from 'lucide-react';
 
 export default function HomePage() {
   return (
     <div className="min-h-screen bg-[#F8FAFC] text-surface-900 font-sans selection:bg-brand-100 selection:text-brand-700">
-      {/* Premium Header */}
-      <nav className="fixed top-0 w-full bg-white/80 backdrop-blur-md border-b border-surface-200/60 z-50 transition-smooth">
+      {/* Premium Glassmorphic Header */}
+      <nav className="fixed top-0 w-full glass-panel border-b border-surface-200/60 z-50 transition-smooth">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-brand-600 rounded-lg flex items-center justify-center shadow-sm">
+            <div className="w-9 h-9 bg-brand-600 rounded-xl flex items-center justify-center shadow-sm glow-brand">
               <RefreshCw className="w-4 h-4 text-white animate-spin-[20s]" />
             </div>
-            <span className="text-xl font-bold tracking-tight text-surface-900">Healix</span>
+            <span className="text-xl font-extrabold tracking-tight text-surface-900">Healix</span>
           </div>
           
-          <div className="hidden md:flex items-center gap-8 text-xs font-semibold text-surface-500 tracking-wider uppercase">
+          <div className="hidden md:flex items-center gap-8 text-xs font-bold text-surface-500 tracking-wider uppercase">
             <Link href="#features" className="hover:text-brand-600 transition-colors">Features</Link>
             <Link href="#how-it-works" className="hover:text-brand-600 transition-colors">Workflow</Link>
             <Link href="/dashboard" className="hover:text-brand-600 transition-colors">Enterprise</Link>
           </div>
 
           <div className="flex items-center gap-3">
-            <Link href="/dashboard" className="text-xs font-bold text-surface-500 hover:text-surface-900 transition-colors tracking-wider uppercase px-3 py-2">
+            <Link href="/dashboard" className="text-xs font-bold text-surface-600 hover:text-surface-900 transition-colors tracking-wider uppercase px-3 py-2">
               Sign In
             </Link>
-            <Link href="/dashboard" className="px-4 py-2 bg-surface-900 text-white rounded-lg text-xs font-bold hover:bg-surface-800 transition-smooth shadow-sm uppercase tracking-wider">
+            <Link href="/dashboard" className="px-4 py-2 bg-surface-900 text-white rounded-lg text-xs font-bold hover:bg-surface-800 active:scale-95 transition-smooth shadow-sm uppercase tracking-wider">
               Launch Console
             </Link>
           </div>
@@ -37,14 +37,14 @@ export default function HomePage() {
         <div className="absolute inset-0 bg-[linear-gradient(to_right,#e2e8f0_1px,transparent_1px),linear-gradient(to_bottom,#e2e8f0_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] opacity-30 -z-10" />
         
         <div className="max-w-4xl mx-auto text-center">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-brand-50 rounded-full border border-brand-100 text-brand-700 text-xs font-bold uppercase tracking-wider mb-8">
-            <span className="w-1.5 h-1.5 bg-brand-500 rounded-full animate-pulse"></span>
-            Autonomous Self-Healing Engine Live
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-brand-50 rounded-full border border-brand-200/60 text-brand-700 text-xs font-bold uppercase tracking-wider mb-8 glow-subtle">
+            <Sparkles className="w-3.5 h-3.5 text-brand-600 animate-pulse" />
+            <span>Autonomous Self-Healing Engine Live</span>
           </div>
           
           <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight text-surface-900 mb-6 leading-tight">
             CI/CD that <br />
-            <span className="text-brand-600">heals itself.</span>
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-600 via-brand-500 to-indigo-600">heals itself.</span>
           </h1>
           
           <p className="text-lg md:text-xl text-surface-500 mb-10 max-w-2xl mx-auto leading-relaxed font-medium">
@@ -52,19 +52,19 @@ export default function HomePage() {
           </p>
           
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Link href="/dashboard" className="group w-full sm:w-auto px-6 py-3.5 bg-brand-500 text-white rounded-lg text-sm font-bold hover:bg-brand-600 transition-smooth shadow-sm hover:shadow flex items-center justify-center gap-2 uppercase tracking-wider">
+            <Link href="/dashboard" className="group w-full sm:w-auto px-6 py-3.5 bg-brand-600 text-white rounded-xl text-sm font-bold hover:bg-brand-700 transition-smooth shadow-md hover:shadow-lg flex items-center justify-center gap-2 uppercase tracking-wider active:scale-98">
               Connect GitHub
-              <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+              <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
             </Link>
-            <Link href="/dashboard" className="w-full sm:w-auto px-6 py-3.5 bg-white border border-surface-200 text-surface-700 rounded-lg text-sm font-bold hover:bg-surface-50 transition-smooth shadow-sm flex items-center justify-center gap-2 uppercase tracking-wider">
+            <Link href="/dashboard" className="w-full sm:w-auto px-6 py-3.5 bg-white border border-surface-200 text-surface-700 rounded-xl text-sm font-bold hover:bg-surface-50 transition-smooth shadow-sm flex items-center justify-center gap-2 uppercase tracking-wider active:scale-98">
               Explore Demo
             </Link>
           </div>
           
           {/* Visual Showcase */}
           <div className="mt-20 relative max-w-4xl mx-auto">
-            <div className="absolute -inset-1.5 bg-surface-200/50 rounded-2xl -z-10 blur-sm" />
-            <div className="bg-white rounded-xl border border-surface-200 shadow-xl overflow-hidden p-1.5">
+            <div className="absolute -inset-1.5 bg-gradient-to-r from-brand-500/20 via-indigo-500/20 to-emerald-500/20 rounded-2xl -z-10 blur-md" />
+            <div className="bg-white rounded-xl border border-surface-200 shadow-2xl overflow-hidden p-1.5">
               <div className="bg-surface-900 rounded-lg border border-surface-800 overflow-hidden text-left font-mono">
                 {/* Window chrome bar */}
                 <div className="bg-surface-800/80 px-4 py-3 flex items-center justify-between border-b border-surface-800">
@@ -85,20 +85,23 @@ export default function HomePage() {
                   
                   <div className="grid grid-cols-1 md:grid-cols-5 gap-2 text-center text-[10px] py-1">
                     {[
-                      { step: 'Detect', status: '✓ ok', color: 'text-emerald-400 border-emerald-900/40 bg-emerald-950/20' },
-                      { step: 'Analyze', status: '✓ ok', color: 'text-emerald-400 border-emerald-900/40 bg-emerald-950/20' },
-                      { step: 'Patch', status: '✓ ok', color: 'text-emerald-400 border-emerald-900/40 bg-emerald-950/20' },
-                      { step: 'Review', status: '✓ ok', color: 'text-emerald-400 border-emerald-900/40 bg-emerald-950/20' },
-                      { step: 'PR Open', status: '✓ ok', color: 'text-emerald-400 border-emerald-900/40 bg-emerald-950/20' }
+                      { step: 'Detect', status: 'Passed', color: 'text-emerald-400 border-emerald-900/40 bg-emerald-950/20' },
+                      { step: 'Analyze', status: 'Passed', color: 'text-emerald-400 border-emerald-900/40 bg-emerald-950/20' },
+                      { step: 'Patch', status: 'Passed', color: 'text-emerald-400 border-emerald-900/40 bg-emerald-950/20' },
+                      { step: 'Review', status: 'Passed', color: 'text-emerald-400 border-emerald-900/40 bg-emerald-950/20' },
+                      { step: 'PR Open', status: 'Passed', color: 'text-emerald-400 border-emerald-900/40 bg-emerald-950/20' }
                     ].map((s, idx) => (
-                      <div key={idx} className={`border rounded p-2 ${s.color}`}>
+                      <div key={idx} className={`border rounded-lg p-2 ${s.color} flex flex-col items-center gap-1`}>
                         <div className="font-bold uppercase tracking-wider text-white mb-0.5">{s.step}</div>
-                        <div>{s.status}</div>
+                        <div className="flex items-center gap-1 text-[10px] font-semibold text-emerald-400">
+                          <Check className="w-3 h-3" />
+                          <span>{s.status}</span>
+                        </div>
                       </div>
                     ))}
                   </div>
 
-                  <div className="bg-surface-950 rounded p-4 border border-surface-800 space-y-1 overflow-x-auto">
+                  <div className="bg-surface-950 rounded-lg p-4 border border-surface-800 space-y-1 overflow-x-auto">
                     <div className="text-surface-500 text-[10px] pb-1">@@ -12,7 +12,7 @@ async function authenticate()</div>
                     <div className="text-red-400 bg-red-950/25 px-2 rounded py-0.5">- await auth.login(user)</div>
                     <div className="text-emerald-400 bg-emerald-950/30 px-2 rounded py-0.5">+ await auth.signIn({'{ provider: \'github\' }'})</div>
@@ -107,11 +110,14 @@ export default function HomePage() {
 
                   <div className="flex items-center justify-between bg-emerald-950/30 border border-emerald-800/40 rounded-lg px-4 py-3 text-[11px]">
                     <div className="flex items-center gap-2.5">
-                      <div className="w-5 h-5 bg-emerald-600 rounded-full flex items-center justify-center text-white">✓</div>
+                      <div className="w-5 h-5 bg-emerald-600 rounded-full flex items-center justify-center text-white">
+                        <Check className="w-3.5 h-3.5" />
+                      </div>
                       <span className="text-emerald-400 font-semibold">PR #107 opened — healix/fix-auth-handler</span>
                     </div>
-                    <Link href="/dashboard" className="text-emerald-300 hover:text-emerald-200 font-bold uppercase tracking-wider text-[10px]">
-                      View Trace →
+                    <Link href="/dashboard" className="text-emerald-300 hover:text-emerald-200 font-bold uppercase tracking-wider text-[10px] flex items-center gap-1">
+                      <span>View Trace</span>
+                      <ArrowRight className="w-3 h-3" />
                     </Link>
                   </div>
                 </div>
@@ -177,20 +183,22 @@ export default function HomePage() {
             </div>
             <div className="bg-white rounded-xl p-8 border border-surface-200/80 shadow-sm flex flex-col justify-center gap-6">
               <div className="flex items-center gap-2 border-b border-surface-100 pb-4">
-                <div className="w-2.5 h-2.5 rounded-full bg-red-400" />
+                <div className="w-2.5 h-2.5 rounded-full bg-red-500 animate-ping" />
                 <span className="text-xs text-surface-500 font-bold uppercase tracking-wider">Simulation Run Trace</span>
               </div>
               <div className="space-y-4">
                 <div className="flex items-center gap-3">
-                  <span className="w-5 h-5 bg-brand-50 rounded-full flex items-center justify-center text-brand-600 text-xs font-bold">✓</span>
+                  <span className="w-6 h-6 bg-brand-50 rounded-full flex items-center justify-center text-brand-600 text-xs font-bold">
+                    <Check className="w-3.5 h-3.5" />
+                  </span>
                   <span className="text-xs font-semibold text-surface-700">Analyzed stack trace: resolved auth exception</span>
                 </div>
-                <div className="bg-emerald-50 border border-emerald-100 rounded-lg p-4 flex items-center justify-between">
+                <div className="bg-emerald-50/80 border border-emerald-200/60 rounded-xl p-4 flex items-center justify-between shadow-sm">
                   <div className="flex items-center gap-2.5">
                     <GitPullRequest className="w-4 h-4 text-emerald-600" />
-                    <span className="text-xs font-bold text-emerald-800">Auto-fix patch verified</span>
+                    <span className="text-xs font-bold text-emerald-900">Auto-fix patch verified</span>
                   </div>
-                  <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider">Ready</span>
+                  <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded-md uppercase tracking-wider">Ready</span>
                 </div>
                 <div className="h-3 bg-surface-100 rounded-full w-full"></div>
                 <div className="h-3 bg-surface-100 rounded-full w-5/6"></div>

@@ -23,13 +23,13 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     },
     ref
   ) => {
-    const baseStyles = 'inline-flex items-center justify-center font-semibold rounded-lg transition-smooth focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/30 disabled:opacity-50 disabled:cursor-not-allowed select-none cursor-pointer';
+    const baseStyles = 'inline-flex items-center justify-center font-semibold rounded-lg transition-smooth focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/30 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100 select-none cursor-pointer';
 
     const variants = {
-      primary: 'bg-brand-500 text-white hover:bg-brand-600 active:bg-brand-700 shadow-sm border border-brand-600/10',
-      secondary: 'bg-surface-100 text-surface-900 hover:bg-surface-200 active:bg-surface-300 border border-surface-200/50',
-      outline: 'bg-white text-surface-800 border border-surface-200 hover:bg-surface-50 active:bg-surface-100',
-      danger: 'bg-red-600 text-white hover:bg-red-700 active:bg-red-800 shadow-sm',
+      primary: 'bg-brand-600 text-white hover:bg-brand-700 active:bg-brand-800 shadow-sm hover:shadow-md border border-brand-500/20',
+      secondary: 'bg-surface-100 text-surface-900 hover:bg-surface-200 active:bg-surface-300 border border-surface-200/60',
+      outline: 'bg-white text-surface-800 border border-surface-200 hover:bg-surface-50 active:bg-surface-100 shadow-sm',
+      danger: 'bg-red-600 text-white hover:bg-red-700 active:bg-red-800 shadow-sm hover:shadow-md border border-red-500/20',
       ghost: 'text-surface-600 hover:bg-surface-100 active:bg-surface-200 hover:text-surface-900',
     };
 

@@ -20,7 +20,18 @@ import {
   LogOut,
   SlidersHorizontal,
   ChevronRight,
-  Database
+  Database,
+  Zap,
+  Wrench,
+  Package,
+  Sliders,
+  Check,
+  Dot,
+  Cpu,
+  Sparkles,
+  Clock,
+  Activity,
+  FileCode
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
@@ -56,12 +67,23 @@ type Analytics = {
   riskLevelBreakdown: Record<string, number>;
 };
 
-const CATEGORY_LABEL: Record<string, string> = {
-  runtime: '⚡ Runtime', 
-  build: '🔨 Build', 
-  dependency: '📦 Dependency', 
-  config: '⚙️ Configuration',
-};
+function renderCategoryTag(catKey: string) {
+  const normalized = (catKey || '').toLowerCase();
+  let Icon = Cpu;
+  let label = catKey;
+
+  if (normalized === 'runtime') { Icon = Zap; label = 'Runtime'; }
+  else if (normalized === 'build') { Icon = Wrench; label = 'Build'; }
+  else if (normalized === 'dependency') { Icon = Package; label = 'Dependency'; }
+  else if (normalized === 'config' || normalized === 'configuration') { Icon = Sliders; label = 'Configuration'; }
+
+  return (
+    <span className="inline-flex items-center gap-1.5 font-bold">
+      <Icon className="w-3.5 h-3.5 text-brand-600" />
+      <span>{label}</span>
+    </span>
+  );
+}
 
 export default function DashboardPage() {
   const [failures, setFailures] = useState<FailureItem[]>([]);
@@ -518,10 +540,10 @@ export default function DashboardPage() {
                           >
                             <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
                               step.done 
-                                ? 'bg-brand-500 text-white shadow-sm' 
+                                ? 'bg-brand-600 text-white shadow-sm' 
                                 : 'bg-surface-200 text-surface-400'
                             }`}>
-                              {step.done ? '✓' : '•'}
+                              {step.done ? <Check className="w-3.5 h-3.5" /> : <Dot className="w-4 h-4 text-surface-400" />}
                             </div>
                             <span className="text-[10px] font-bold uppercase tracking-wider text-surface-600">
                               {step.label}
@@ -537,10 +559,8 @@ export default function DashboardPage() {
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                           {/* Info chips */}
                           <div className="bg-surface-50 rounded-lg border border-surface-200 p-3">
-                            <span className="text-[9px] font-bold text-surface-450 uppercase tracking-widest block">Root Cause Type</span>
-                            <span className="text-xs font-bold text-surface-800 mt-1 block">
-                              {CATEGORY_LABEL[latestRun.category] || latestRun.category}
-                            </span>
+                            <span className="text-[9px] font-bold text-surface-450 uppercase tracking-widest block mb-1">Root Cause Type</span>
+                            {renderCategoryTag(latestRun.category)}
                           </div>
 
                           <div className="bg-surface-50 rounded-lg border border-surface-200 p-3">
@@ -682,7 +702,7 @@ export default function DashboardPage() {
                           <div key={cat} className="space-y-1">
                             <div className="flex justify-between items-center text-xs">
                               <span className="font-semibold text-surface-750">
-                                {CATEGORY_LABEL[cat] || cat}
+                                {renderCategoryTag(cat)}
                               </span>
                               <span className="font-bold text-surface-900">{count}</span>
                             </div>
