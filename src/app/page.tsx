@@ -37,11 +37,6 @@ export default function HomePage() {
         <div className="absolute inset-0 bg-[linear-gradient(to_right,#e2e8f0_1px,transparent_1px),linear-gradient(to_bottom,#e2e8f0_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] opacity-30 -z-10" />
         
         <div className="max-w-4xl mx-auto text-center">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-brand-50 rounded-full border border-brand-200/60 text-brand-700 text-xs font-bold uppercase tracking-wider mb-8 glow-subtle">
-            <Sparkles className="w-3.5 h-3.5 text-brand-600 animate-pulse" />
-            <span>Autonomous Self-Healing Engine Live</span>
-          </div>
-          
           <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight text-surface-900 mb-6 leading-tight">
             CI/CD that <br />
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-600 via-brand-500 to-indigo-600">heals itself.</span>
