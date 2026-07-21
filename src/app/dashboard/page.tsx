@@ -323,7 +323,6 @@ export default function DashboardPage() {
             description="Pipeline runs processed" 
             icon={<BarChart2 className="w-5 h-5 text-brand-600" />}
             loading={loading && !stats}
-            accentClass="border-t-brand-500"
           />
           <MetricCard 
             label="Success Rate" 
@@ -331,7 +330,6 @@ export default function DashboardPage() {
             description="AI repairs approved" 
             icon={<CheckCircle2 className="w-5 h-5 text-emerald-600" />}
             loading={loading && !stats}
-            accentClass="border-t-emerald-500"
           />
           <MetricCard 
             label="Avg MTTR" 
@@ -339,7 +337,6 @@ export default function DashboardPage() {
             description="Mean recovery time" 
             icon={<RefreshCw className="w-5 h-5 text-amber-600" />}
             loading={loading && !stats}
-            accentClass="border-t-amber-500"
           />
           <MetricCard 
             label="Auto PRs Created" 
@@ -347,7 +344,6 @@ export default function DashboardPage() {
             description="Pull requests proposed" 
             icon={<GitPullRequest className="w-5 h-5 text-indigo-600" />}
             loading={loading && !stats}
-            accentClass="border-t-indigo-500"
           />
         </div>
 
@@ -453,8 +449,8 @@ export default function DashboardPage() {
                         onClick={() => setSelectedId(f.id)}
                         className={`w-full p-4 text-left rounded-xl border transition-all duration-200 flex flex-col gap-2.5 cursor-pointer relative group ${
                           isSelected 
-                            ? 'bg-white border-brand-500 shadow-md ring-2 ring-brand-500/10 border-l-4 border-l-brand-600' 
-                            : 'bg-white border-surface-200/80 hover:border-brand-200 hover:shadow-sm hover:-translate-y-0.5'
+                            ? 'bg-white border-brand-500 shadow-sm ring-1 ring-brand-500/20' 
+                            : 'bg-white border-surface-200/80 hover:border-surface-300 hover:shadow-xs'
                         }`}
                       >
                         <div className="flex items-center justify-between w-full">
@@ -529,15 +525,16 @@ export default function DashboardPage() {
                 </div>
 
                 {selected && (
-                  <div className="flex items-center gap-3 flex-wrap">
-                    <button
+                  <div className="flex items-center gap-2.5 flex-wrap">
+                    <Button
                       onClick={(e) => handleDeleteFailure(e, selected.id)}
-                      className="px-3 py-1.5 rounded-lg border border-red-200/80 bg-red-50/60 hover:bg-red-100 hover:border-red-300 text-red-700 text-xs font-bold flex items-center gap-1.5 transition-smooth cursor-pointer active:scale-95 shadow-2xs"
-                      title="Delete Incident Record"
+                      variant="outline"
+                      size="sm"
+                      className="text-red-600 border-surface-200 hover:bg-red-50 hover:border-red-200 hover:text-red-700"
+                      leftIcon={<Trash2 className="w-3.5 h-3.5" />}
                     >
-                      <Trash2 className="w-3.5 h-3.5" />
-                      <span className="hidden sm:inline uppercase tracking-wider text-[10px]">Delete</span>
-                    </button>
+                      Delete
+                    </Button>
                     {selected.status !== 'analyzing' && (
                       <Button
                         onClick={triggerHeal}
@@ -836,12 +833,11 @@ interface MetricCardProps {
   description: string;
   icon: React.ReactNode;
   loading?: boolean;
-  accentClass?: string;
 }
 
-function MetricCard({ label, value, description, icon, loading = false, accentClass = 'border-t-brand-500' }: MetricCardProps) {
+function MetricCard({ label, value, description, icon, loading = false }: MetricCardProps) {
   return (
-    <Card className={`border border-surface-200/80 border-t-2 ${accentClass} transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 bg-white`}>
+    <Card className="border border-surface-200/80 transition-all duration-200 hover:border-surface-300 hover:shadow-sm bg-white">
       <CardContent className="p-5 flex items-start justify-between">
         <div className="space-y-1.5 flex-1">
           <span className="text-[10px] font-bold text-surface-450 uppercase tracking-widest block">
@@ -858,7 +854,7 @@ function MetricCard({ label, value, description, icon, loading = false, accentCl
             {description}
           </span>
         </div>
-        <div className="w-10 h-10 rounded-xl bg-surface-50 border border-surface-200/60 flex items-center justify-center flex-shrink-0 shadow-2xs">
+        <div className="w-10 h-10 rounded-xl bg-surface-50 border border-surface-200/60 flex items-center justify-center flex-shrink-0">
           {icon}
         </div>
       </CardContent>
