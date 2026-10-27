@@ -1,8 +1,8 @@
 import * as React from 'react';
 
 export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'secondary' | 'outline' | 'danger' | 'ghost';
-  size?: 'sm' | 'md' | 'lg';
+  variant?: 'primary' | 'secondary' | 'outline' | 'danger' | 'ghost' | 'terminal';
+  size?: 'xs' | 'sm' | 'md' | 'lg';
   isLoading?: boolean;
   leftIcon?: React.ReactNode;
   rightIcon?: React.ReactNode;
@@ -23,20 +23,29 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     },
     ref
   ) => {
-    const baseStyles = 'inline-flex items-center justify-center font-semibold rounded-lg transition-smooth focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/30 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100 select-none cursor-pointer';
+    const baseStyles =
+      'inline-flex items-center justify-center font-medium rounded-md transition-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D65A31]/30 disabled:opacity-50 disabled:cursor-not-allowed select-none cursor-pointer';
 
     const variants = {
-      primary: 'bg-brand-600 text-white hover:bg-brand-700 active:bg-brand-800 shadow-sm hover:shadow-md border border-brand-500/20',
-      secondary: 'bg-surface-100 text-surface-900 hover:bg-surface-200 active:bg-surface-300 border border-surface-200/60',
-      outline: 'bg-white text-surface-800 border border-surface-200 hover:bg-surface-50 active:bg-surface-100 shadow-sm',
-      danger: 'bg-red-600 text-white hover:bg-red-700 active:bg-red-800 shadow-sm hover:shadow-md border border-red-500/20',
-      ghost: 'text-surface-600 hover:bg-surface-100 active:bg-surface-200 hover:text-surface-900',
+      primary:
+        'bg-[#D65A31] text-white hover:bg-[#B94A28] active:bg-[#A23E1E] border border-[#B94A28]/40 shadow-xs',
+      secondary:
+        'bg-[#ECEDE7] text-[#20221F] hover:bg-[#E2E4DC] active:bg-[#D5D7CD] border border-[#DDDFD7]',
+      outline:
+        'bg-[#FFFFFF] text-[#20221F] border border-[#DDDFD7] hover:bg-[#F5F4EF] hover:border-[#C4C7BE] active:bg-[#ECEDE7] shadow-2xs',
+      danger:
+        'bg-[#B83D38] text-white hover:bg-[#A33530] active:bg-[#8E2D29] border border-[#8E2D29]/40 shadow-xs',
+      ghost:
+        'text-[#696D65] hover:text-[#20221F] hover:bg-[#ECEDE7] active:bg-[#E2E4DC]',
+      terminal:
+        'bg-[#222522] text-[#E8E9E3] hover:bg-[#2D312D] active:bg-[#191B19] border border-[#353934]',
     };
 
     const sizes = {
-      sm: 'px-3 py-1.5 text-xs gap-1.5',
-      md: 'px-4 py-2 text-sm gap-2',
-      lg: 'px-5 py-2.5 text-base gap-2.5',
+      xs: 'px-2 py-1 text-xs gap-1.5 h-7',
+      sm: 'px-2.5 py-1.5 text-xs gap-1.5 h-8',
+      md: 'px-3.5 py-2 text-sm gap-2 h-9',
+      lg: 'px-4 py-2.5 text-sm gap-2.5 h-10',
     };
 
     return (
@@ -48,7 +57,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       >
         {isLoading && (
           <svg
-            className="animate-spin -ml-0.5 h-4 w-4 text-current"
+            className="animate-spin -ml-0.5 h-3.5 w-3.5 text-current"
             fill="none"
             viewBox="0 0 24 24"
           >

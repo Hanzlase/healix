@@ -54,113 +54,109 @@ export const DiffViewer: React.FC<DiffViewerProps> = ({ patch, filename }) => {
     URL.revokeObjectURL(url);
   };
 
-  const lines = React.useMemo(() => {
-    if (!patch) return [];
-    return patch.split('\n');
-  }, [patch]);
-
   const { parsedLines, additions, deletions } = React.useMemo(() => {
-    let oldNum = 0;
-    let newNum = 0;
+    if (!patch) return { parsedLines: [], additions: 0, deletions: 0 };
+    const rawLines = patch.split('\n');
+
+    let oldCounter = 0;
+    let newCounter = 0;
     let adds = 0;
     let dels = 0;
 
-    const parsed: ParsedLine[] = lines.map((line) => {
+    const parsed: ParsedLine[] = [];
+
+    for (let i = 0; i < rawLines.length; i++) {
+      const line = rawLines[i];
       let type: ParsedLine['type'] = 'normal';
       let oldDisplay = '';
       let newDisplay = '';
 
-      if (line.startsWith('+++') || line.startsWith('---') || line.startsWith('Index:') || line.startsWith('diff --git')) {
+      if (
+        line.startsWith('+++') ||
+        line.startsWith('---') ||
+        line.startsWith('Index:') ||
+        line.startsWith('diff --git')
+      ) {
         type = 'header';
       } else if (line.startsWith('@@')) {
         type = 'header';
         const match = line.match(/^@@\s+-(\d+),?\d*\s+\+(\d+),?\d*\s+@@/);
         if (match) {
-          oldNum = parseInt(match[1], 10) - 1;
-          newNum = parseInt(match[2], 10) - 1;
+          oldCounter = parseInt(match[1], 10) - 1;
+          newCounter = parseInt(match[2], 10) - 1;
         }
       } else if (line.startsWith('+')) {
         type = 'addition';
         adds++;
-        newNum++;
-        newDisplay = newNum.toString();
+        newCounter++;
+        newDisplay = newCounter.toString();
       } else if (line.startsWith('-')) {
         type = 'deletion';
         dels++;
-        oldNum++;
-        oldDisplay = oldNum.toString();
+        oldCounter++;
+        oldDisplay = oldCounter.toString();
       } else {
-        oldNum++;
-        newNum++;
-        oldDisplay = oldNum.toString();
-        newDisplay = newNum.toString();
+        oldCounter++;
+        newCounter++;
+        oldDisplay = oldCounter.toString();
+        newDisplay = newCounter.toString();
       }
 
-      return {
+      parsed.push({
         content: line,
         type,
         oldLineNum: oldDisplay,
         newLineNum: newDisplay,
-      };
-    });
+      });
+    }
 
     return { parsedLines: parsed, additions: adds, deletions: dels };
-  }, [lines]);
+  }, [patch]);
 
-  // Construct split side-by-side rows
-  const splitRows = React.useMemo(() => {
+  const splitLines = React.useMemo<SplitLine[]>(() => {
     const rows: SplitLine[] = [];
     let i = 0;
 
     while (i < parsedLines.length) {
       const line = parsedLines[i];
 
-      if (line.type === 'header') {
-        rows.push({
-          left: { lineNum: '', content: line.content, type: 'header' },
-          right: { lineNum: '', content: line.content, type: 'header' },
-        });
-        i++;
-      } else if (line.type === 'normal') {
-        rows.push({
-          left: { lineNum: line.oldLineNum, content: line.content, type: 'normal' },
-          right: { lineNum: line.newLineNum, content: line.content, type: 'normal' },
-        });
-        i++;
-      } else if (line.type === 'deletion') {
-        // Collect batch of deletions
-        const delBatch: ParsedLine[] = [];
+      if (line.type === 'deletion') {
+        const delLines: ParsedLine[] = [];
         while (i < parsedLines.length && parsedLines[i].type === 'deletion') {
-          delBatch.push(parsedLines[i]);
-          i++;
-        }
-        // Collect following additions
-        const addBatch: ParsedLine[] = [];
-        while (i < parsedLines.length && parsedLines[i].type === 'addition') {
-          addBatch.push(parsedLines[i]);
+          delLines.push(parsedLines[i]);
           i++;
         }
 
-        const maxLen = Math.max(delBatch.length, addBatch.length);
-        for (let j = 0; j < maxLen; j++) {
-          const d = delBatch[j];
-          const a = addBatch[j];
+        const addLines: ParsedLine[] = [];
+        while (i < parsedLines.length && parsedLines[i].type === 'addition') {
+          addLines.push(parsedLines[i]);
+          i++;
+        }
+
+        const maxPairs = Math.max(delLines.length, addLines.length);
+        for (let k = 0; k < maxPairs; k++) {
+          const leftLine = delLines[k];
+          const rightLine = addLines[k];
           rows.push({
-            left: d
-              ? { lineNum: d.oldLineNum, content: d.content.slice(1), type: 'deletion' }
+            left: leftLine
+              ? { lineNum: leftLine.oldLineNum, content: leftLine.content, type: 'deletion' }
               : { lineNum: '', content: '', type: 'empty' },
-            right: a
-              ? { lineNum: a.newLineNum, content: a.content.slice(1), type: 'addition' }
+            right: rightLine
+              ? { lineNum: rightLine.newLineNum, content: rightLine.content, type: 'addition' }
               : { lineNum: '', content: '', type: 'empty' },
           });
         }
       } else if (line.type === 'addition') {
         rows.push({
           left: { lineNum: '', content: '', type: 'empty' },
-          right: { lineNum: line.newLineNum, content: line.content.slice(1), type: 'addition' },
+          right: { lineNum: line.newLineNum, content: line.content, type: 'addition' },
         });
         i++;
       } else {
+        rows.push({
+          left: { lineNum: line.oldLineNum, content: line.content, type: line.type },
+          right: { lineNum: line.newLineNum, content: line.content, type: line.type },
+        });
         i++;
       }
     }
@@ -168,212 +164,190 @@ export const DiffViewer: React.FC<DiffViewerProps> = ({ patch, filename }) => {
     return rows;
   }, [parsedLines]);
 
+  if (!patch) {
+    return (
+      <div className="bg-[#191B19] border border-[#353934] rounded-lg p-6 text-center text-xs font-mono text-[#A0A49B]">
+        No patch diff generated for this incident.
+      </div>
+    );
+  }
+
   return (
-    <div className="border border-slate-700/80 rounded-xl overflow-hidden bg-slate-900 shadow-xl flex flex-col font-sans transition-all">
+    <div className="bg-[#191B19] border border-[#353934] rounded-lg overflow-hidden shadow-sm flex flex-col text-[#E8E9E3]">
       {/* Diff Toolbar */}
-      <div className="bg-slate-950/90 border-b border-slate-800 px-4 py-2.5 flex items-center justify-between flex-wrap gap-3">
-        <div className="flex items-center gap-2.5">
-          <div className="w-7 h-7 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
-            <FileCode className="w-4 h-4" />
-          </div>
-          <span className="text-xs font-bold font-mono tracking-tight text-slate-200">
-            {filename || 'patch.diff'}
+      <div className="px-3.5 py-2 bg-[#222522] border-b border-[#353934] flex items-center justify-between gap-3 text-xs flex-wrap">
+        <div className="flex items-center gap-2 font-mono min-w-0">
+          <FileCode className="w-3.5 h-3.5 text-[#A0A49B] flex-shrink-0" />
+          <span className="font-semibold text-[#E8E9E3] truncate">
+            {filename || 'Remediation.patch'}
           </span>
-          <div className="flex items-center gap-1.5 ml-1 text-[11px] font-mono font-semibold">
-            {additions > 0 && (
-              <span className="px-1.5 py-0.5 rounded bg-emerald-500/15 border border-emerald-500/25 text-emerald-400">
-                +{additions}
-              </span>
-            )}
-            {deletions > 0 && (
-              <span className="px-1.5 py-0.5 rounded bg-red-500/15 border border-red-500/25 text-red-400">
-                -{deletions}
-              </span>
-            )}
+          <div className="flex items-center gap-1.5 ml-2 text-[11px]">
+            <span className="px-1.5 py-0.2 rounded bg-[rgba(131,201,149,0.15)] text-[#83C995] font-semibold border border-[#83C995]/30">
+              +{additions}
+            </span>
+            <span className="px-1.5 py-0.2 rounded bg-[rgba(229,140,133,0.15)] text-[#E58C85] font-semibold border border-[#E58C85]/30">
+              -{deletions}
+            </span>
           </div>
         </div>
 
-        {/* View Mode & Actions */}
         <div className="flex items-center gap-2">
-          {/* Unified vs Split view toggle */}
-          <div className="hidden sm:flex items-center bg-slate-900 border border-slate-800 rounded-lg p-0.5 text-xs font-medium">
+          {/* View Mode Toggle */}
+          <div className="hidden sm:flex items-center bg-[#191B19] p-0.5 rounded border border-[#353934]">
             <button
               onClick={() => setViewMode('unified')}
-              className={`px-2.5 py-1 rounded-md flex items-center gap-1.5 transition-colors cursor-pointer ${
+              className={`px-2 py-0.5 rounded text-[11px] font-mono flex items-center gap-1 transition-colors ${
                 viewMode === 'unified'
-                  ? 'bg-indigo-600 text-white font-semibold shadow-xs'
-                  : 'text-slate-400 hover:text-slate-200'
+                  ? 'bg-[#353934] text-white'
+                  : 'text-[#A0A49B] hover:text-[#E8E9E3]'
               }`}
               title="Unified View"
             >
-              <AlignJustify className="w-3.5 h-3.5" />
+              <AlignJustify className="w-3 h-3" />
               <span>Unified</span>
             </button>
             <button
               onClick={() => setViewMode('split')}
-              className={`px-2.5 py-1 rounded-md flex items-center gap-1.5 transition-colors cursor-pointer ${
+              className={`px-2 py-0.5 rounded text-[11px] font-mono flex items-center gap-1 transition-colors ${
                 viewMode === 'split'
-                  ? 'bg-indigo-600 text-white font-semibold shadow-xs'
-                  : 'text-slate-400 hover:text-slate-200'
+                  ? 'bg-[#353934] text-white'
+                  : 'text-[#A0A49B] hover:text-[#E8E9E3]'
               }`}
-              title="Side-by-Side Split View"
+              title="Split View"
             >
-              <Columns className="w-3.5 h-3.5" />
+              <Columns className="w-3 h-3" />
               <span>Split</span>
             </button>
           </div>
 
-          <button
-            onClick={handleDownload}
-            className="p-1.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition-colors cursor-pointer"
-            title="Download Patch (.diff)"
-          >
-            <Download className="w-3.5 h-3.5" />
-          </button>
-
+          {/* Copy Patch */}
           <button
             onClick={handleCopy}
-            className="px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-300 hover:text-white hover:bg-slate-800 transition-colors flex items-center gap-1.5 text-xs font-semibold cursor-pointer active:scale-95"
-            title="Copy patch content"
+            className="px-2 py-1 rounded bg-[#191B19] hover:bg-[#2D312D] text-[#E8E9E3] border border-[#353934] text-[11px] font-mono flex items-center gap-1 transition-colors cursor-pointer"
+            title="Copy Raw Diff"
           >
             {copied ? (
               <>
-                <Check className="w-3.5 h-3.5 text-emerald-400" />
-                <span className="text-emerald-400">Copied</span>
+                <Check className="w-3 h-3 text-[#83C995]" />
+                <span className="text-[#83C995]">Copied</span>
               </>
             ) : (
               <>
-                <Copy className="w-3.5 h-3.5 text-slate-400" />
-                <span>Copy</span>
+                <Copy className="w-3 h-3 text-[#A0A49B]" />
+                <span>Copy Diff</span>
               </>
             )}
+          </button>
+
+          {/* Download Patch */}
+          <button
+            onClick={handleDownload}
+            className="p-1 rounded bg-[#191B19] hover:bg-[#2D312D] text-[#A0A49B] hover:text-[#E8E9E3] border border-[#353934] transition-colors cursor-pointer"
+            title="Download .diff"
+          >
+            <Download className="w-3.5 h-3.5" />
           </button>
         </div>
       </div>
 
-      {/* Diff Output Area */}
-      {viewMode === 'unified' ? (
-        <div className="overflow-x-auto max-h-[460px] bg-slate-950 text-slate-200 font-mono text-[11px] leading-5">
-          <table className="w-full border-collapse select-text">
+      {/* Code Container */}
+      <div className="overflow-x-auto font-mono text-[11px] leading-[20px] terminal-scroll max-h-[500px]">
+        {viewMode === 'unified' ? (
+          <table className="w-full border-collapse">
             <tbody>
               {parsedLines.map((line, idx) => {
-                let bgClass = 'hover:bg-slate-900/60';
-                let textClass = 'text-slate-300';
-                let sign = ' ';
+                const isAdd = line.type === 'addition';
+                const isDel = line.type === 'deletion';
+                const isHdr = line.type === 'header';
 
-                if (line.type === 'addition') {
-                  bgClass = 'bg-emerald-950/40 hover:bg-emerald-950/60 border-l-2 border-emerald-500';
-                  textClass = 'text-emerald-300 font-semibold';
-                  sign = '+';
-                } else if (line.type === 'deletion') {
-                  bgClass = 'bg-red-950/30 hover:bg-red-950/50 border-l-2 border-red-500';
-                  textClass = 'text-red-300';
-                  sign = '-';
-                } else if (line.type === 'header') {
-                  bgClass = 'bg-slate-900/80 border-y border-slate-800/80';
-                  textClass = 'text-indigo-300 font-bold';
-                  sign = ' ';
-                }
+                const rowBg = isAdd
+                  ? 'bg-[rgba(131,201,149,0.12)]'
+                  : isDel
+                  ? 'bg-[rgba(229,140,133,0.12)]'
+                  : isHdr
+                  ? 'bg-[#222522]/80 text-[#A0A49B]'
+                  : 'hover:bg-[#222522]/40';
+
+                const textCol = isAdd
+                  ? 'text-[#83C995]'
+                  : isDel
+                  ? 'text-[#E58C85]'
+                  : isHdr
+                  ? 'text-[#A0A49B] italic'
+                  : 'text-[#E8E9E3]';
 
                 return (
-                  <tr key={idx} className={`${bgClass} transition-colors group`}>
-                    <td className="w-9 text-right pr-2 select-none text-[10px] text-slate-600 border-r border-slate-800/80 font-mono">
+                  <tr key={idx} className={`${rowBg} transition-colors select-text`}>
+                    <td className="w-10 text-right pr-2 select-none text-[#696D65] border-r border-[#353934]/60 font-mono text-[10px] tabular-nums">
                       {line.oldLineNum}
                     </td>
-                    <td className="w-9 text-right pr-2 select-none text-[10px] text-slate-600 border-r border-slate-800/80 font-mono">
+                    <td className="w-10 text-right pr-2 select-none text-[#696D65] border-r border-[#353934]/60 font-mono text-[10px] tabular-nums">
                       {line.newLineNum}
                     </td>
-                    <td
-                      className={`w-6 text-center select-none font-bold font-mono pl-1 ${
-                        line.type === 'addition'
-                          ? 'text-emerald-400'
-                          : line.type === 'deletion'
-                          ? 'text-red-400'
-                          : 'text-slate-600'
-                      }`}
-                    >
-                      {sign}
+                    <td className="w-6 text-center select-none font-bold">
+                      {isAdd && <span className="text-[#83C995]">+</span>}
+                      {isDel && <span className="text-[#E58C85]">-</span>}
                     </td>
-                    <td className={`px-3 py-0.5 whitespace-pre font-mono ${textClass}`}>
-                      {line.type === 'addition' || line.type === 'deletion'
-                        ? line.content.slice(1)
-                        : line.content}
+                    <td className={`pl-2 pr-4 whitespace-pre font-mono ${textCol}`}>
+                      {line.content.replace(/^[+-]/, '')}
                     </td>
                   </tr>
                 );
               })}
-              {parsedLines.length === 0 && (
-                <tr>
-                  <td className="p-8 text-center text-slate-500 italic" colSpan={4}>
-                    No patch diff generated for this failure.
-                  </td>
-                </tr>
-              )}
             </tbody>
           </table>
-        </div>
-      ) : (
-        /* Split Side-by-Side View */
-        <div className="overflow-x-auto max-h-[460px] bg-slate-950 text-slate-200 font-mono text-[11px] leading-5">
-          <table className="w-full border-collapse select-text table-fixed">
-            <colgroup>
-              <col className="w-9" />
-              <col className="w-1/2" />
-              <col className="w-9" />
-              <col className="w-1/2" />
-            </colgroup>
+        ) : (
+          /* Split View */
+          <table className="w-full border-collapse">
             <tbody>
-              {splitRows.map((row, idx) => {
-                const isHeader = row.left?.type === 'header';
+              {splitLines.map((row, idx) => {
+                const left = row.left;
+                const right = row.right;
+
                 return (
-                  <tr
-                    key={idx}
-                    className={`border-b border-slate-900/40 ${
-                      isHeader ? 'bg-slate-900/80 text-indigo-300 font-bold' : ''
-                    }`}
-                  >
-                    {/* Left Pane (Old / Deletion) */}
-                    <td className="text-right pr-2 select-none text-[10px] text-slate-600 border-r border-slate-800 bg-slate-950/60 font-mono">
-                      {row.left?.lineNum}
+                  <tr key={idx} className="border-b border-[#353934]/30">
+                    {/* Left Column (Original/Deletion) */}
+                    <td className="w-9 text-right pr-2 select-none text-[#696D65] bg-[#222522]/50 border-r border-[#353934]/60 text-[10px] tabular-nums">
+                      {left?.lineNum || ''}
                     </td>
                     <td
-                      className={`px-3 py-0.5 whitespace-pre font-mono border-r border-slate-800/80 overflow-hidden text-ellipsis ${
-                        row.left?.type === 'deletion'
-                          ? 'bg-red-950/35 text-red-300 border-l-2 border-red-500'
-                          : row.left?.type === 'empty'
-                          ? 'bg-slate-950/40 text-transparent'
-                          : isHeader
-                          ? 'text-indigo-300'
-                          : 'text-slate-300'
+                      className={`w-1/2 pl-2 pr-2 whitespace-pre border-r border-[#353934] ${
+                        left?.type === 'deletion'
+                          ? 'bg-[rgba(229,140,133,0.12)] text-[#E58C85]'
+                          : left?.type === 'header'
+                          ? 'bg-[#222522] text-[#A0A49B] italic'
+                          : left?.type === 'empty'
+                          ? 'bg-[#191B19]'
+                          : 'text-[#E8E9E3]'
                       }`}
                     >
-                      {row.left?.content || ' '}
+                      {left?.content ? left.content.replace(/^[-]/, '') : ''}
                     </td>
 
-                    {/* Right Pane (New / Addition) */}
-                    <td className="text-right pr-2 select-none text-[10px] text-slate-600 border-r border-slate-800 bg-slate-950/60 font-mono">
-                      {row.right?.lineNum}
+                    {/* Right Column (New/Addition) */}
+                    <td className="w-9 text-right pr-2 select-none text-[#696D65] bg-[#222522]/50 border-r border-[#353934]/60 text-[10px] tabular-nums">
+                      {right?.lineNum || ''}
                     </td>
                     <td
-                      className={`px-3 py-0.5 whitespace-pre font-mono overflow-hidden text-ellipsis ${
-                        row.right?.type === 'addition'
-                          ? 'bg-emerald-950/40 text-emerald-300 font-semibold border-l-2 border-emerald-500'
-                          : row.right?.type === 'empty'
-                          ? 'bg-slate-950/40 text-transparent'
-                          : isHeader
-                          ? 'text-indigo-300'
-                          : 'text-slate-300'
+                      className={`w-1/2 pl-2 pr-2 whitespace-pre ${
+                        right?.type === 'addition'
+                          ? 'bg-[rgba(131,201,149,0.12)] text-[#83C995]'
+                          : right?.type === 'header'
+                          ? 'bg-[#222522] text-[#A0A49B] italic'
+                          : right?.type === 'empty'
+                          ? 'bg-[#191B19]'
+                          : 'text-[#E8E9E3]'
                       }`}
                     >
-                      {row.right?.content || ' '}
+                      {right?.content ? right.content.replace(/^[+]/, '') : ''}
                     </td>
                   </tr>
                 );
               })}
             </tbody>
           </table>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 };

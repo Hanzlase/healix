@@ -4,7 +4,7 @@ export const Card = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDi
   ({ className = '', ...props }, ref) => (
     <div
       ref={ref}
-      className={`bg-white border border-surface-200/80 rounded-xl shadow-[0_1px_3px_0_rgba(0,0,0,0.02),0_1px_2px_0_rgba(0,0,0,0.03)] overflow-hidden ${className}`}
+      className={`bg-white border border-[#DDDFD7] rounded-lg shadow-2xs overflow-hidden ${className}`}
       {...props}
     />
   )
@@ -15,7 +15,7 @@ export const CardHeader = React.forwardRef<HTMLDivElement, React.HTMLAttributes<
   ({ className = '', ...props }, ref) => (
     <div
       ref={ref}
-      className={`px-6 py-4 border-b border-surface-100 flex flex-col gap-1.5 ${className}`}
+      className={`px-5 py-3.5 border-b border-[#DDDFD7] bg-[#FFFFFF] flex flex-col gap-1 ${className}`}
       {...props}
     />
   )
@@ -26,7 +26,7 @@ export const CardTitle = React.forwardRef<HTMLHeadingElement, React.HTMLAttribut
   ({ className = '', ...props }, ref) => (
     <h3
       ref={ref}
-      className={`text-base font-bold tracking-tight text-surface-900 ${className}`}
+      className={`text-sm font-semibold tracking-tight text-[#20221F] ${className}`}
       {...props}
     />
   )
@@ -37,7 +37,7 @@ export const CardDescription = React.forwardRef<HTMLParagraphElement, React.HTML
   ({ className = '', ...props }, ref) => (
     <p
       ref={ref}
-      className={`text-xs text-surface-500 font-medium ${className}`}
+      className={`text-xs text-[#696D65] leading-relaxed ${className}`}
       {...props}
     />
   )
@@ -46,7 +46,7 @@ CardDescription.displayName = 'CardDescription';
 
 export const CardContent = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
   ({ className = '', ...props }, ref) => (
-    <div ref={ref} className={`p-6 ${className}`} {...props} />
+    <div ref={ref} className={`p-5 ${className}`} {...props} />
   )
 );
 CardContent.displayName = 'CardContent';

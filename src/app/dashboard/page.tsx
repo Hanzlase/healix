@@ -1,48 +1,39 @@
 'use client';
 
-import Link from 'next/link';
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { SessionManager } from '@/lib/session-manager';
 import { getSession, signOut } from 'next-auth/react';
 import { 
   Terminal, 
-  Settings, 
-  RefreshCw, 
   BarChart2, 
-  ShieldAlert, 
   GitBranch, 
   GitPullRequest, 
   Search, 
   CheckCircle2, 
   AlertCircle, 
-  ArrowUpRight, 
-  LogOut,
-  ChevronRight,
-  Database,
-  Zap,
-  Wrench,
-  Package,
-  Sliders,
-  Check,
-  Cpu,
+  Database, 
+  Zap, 
+  Wrench, 
+  Package, 
+  Sliders, 
+  Check, 
+  Cpu, 
+  Clock, 
+  Activity, 
+  Trash2, 
+  Copy, 
+  ChevronDown, 
+  ChevronUp, 
+  ExternalLink, 
+  ShieldCheck, 
   Sparkles,
-  Clock,
-  Activity,
-  FileCode,
-  Trash2,
-  Copy,
-  ChevronDown,
-  ChevronUp,
-  Filter,
-  ExternalLink,
-  ShieldCheck,
-  Flame,
-  ArrowRight
+  RefreshCw
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { DiffViewer } from '@/components/ui/diff-viewer';
 import { SimulateFailureModal } from '@/components/simulate-failure-modal';
+import { AppShell } from '@/components/app-shell';
 
 type AnalysisRun = {
   id: string;
@@ -93,33 +84,28 @@ type Analytics = {
   riskLevelBreakdown: Record<string, number>;
 };
 
-function renderCategoryTag(catKey: string) {
+function renderCategoryBadge(catKey: string) {
   const normalized = (catKey || '').toLowerCase();
   let Icon = Cpu;
-  let label = catKey || 'Unknown';
-  let badgeColor = 'text-indigo-400 bg-indigo-500/10 border-indigo-500/20';
+  let label = catKey || 'General';
 
   if (normalized === 'runtime') {
     Icon = Zap;
     label = 'Runtime';
-    badgeColor = 'text-amber-400 bg-amber-500/10 border-amber-500/20';
   } else if (normalized === 'build') {
     Icon = Wrench;
     label = 'Build';
-    badgeColor = 'text-blue-400 bg-blue-500/10 border-blue-500/20';
   } else if (normalized === 'dependency') {
     Icon = Package;
     label = 'Dependency';
-    badgeColor = 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20';
   } else if (normalized === 'config' || normalized === 'configuration') {
     Icon = Sliders;
-    label = 'Configuration';
-    badgeColor = 'text-purple-400 bg-purple-500/10 border-purple-500/20';
+    label = 'Config';
   }
 
   return (
-    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-xs font-semibold ${badgeColor}`}>
-      <Icon className="w-3.5 h-3.5 flex-shrink-0" />
+    <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-mono font-medium bg-[#ECEDE7] text-[#20221F] border border-[#DDDFD7]">
+      <Icon className="w-3.5 h-3.5 text-[#D65A31] flex-shrink-0" />
       <span>{label}</span>
     </span>
   );
@@ -145,6 +131,7 @@ export default function DashboardPage() {
   const [isSimulateOpen, setIsSimulateOpen] = useState(false);
   const [copiedSha, setCopiedSha] = useState(false);
   const [copiedBranch, setCopiedBranch] = useState(false);
+  const [copiedLogs, setCopiedLogs] = useState(false);
 
   const fetchAll = useCallback(async () => {
     try {
@@ -288,7 +275,7 @@ export default function DashboardPage() {
       const localSess = SessionManager.get();
       if (localSess.failuresCache) {
         SessionManager.update({
-          failuresCache: localSess.failuresCache.filter((f: any) => f.id !== failureId),
+          failuresCache: localSess.failuresCache.filter((f: FailureItem) => f.id !== failureId),
           recentFailures: (localSess.recentFailures || []).filter((id: string) => id !== failureId),
         });
       }
@@ -312,194 +299,117 @@ export default function DashboardPage() {
     setTimeout(() => setCopiedBranch(false), 2000);
   };
 
+  const handleCopyLogs = () => {
+    if (!selected?.logs && !selected?.errorSummary) return;
+    navigator.clipboard.writeText(selected.logs || selected.errorSummary || '');
+    setCopiedLogs(true);
+    setTimeout(() => setCopiedLogs(false), 2000);
+  };
+
   const getStatusBadge = (status: string, reviewStatus?: string | null) => {
     const finalStatus = reviewStatus || status;
     switch (finalStatus) {
       case 'approved':
       case 'analyzed':
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/25">
-            <CheckCircle2 className="w-3.5 h-3.5" />
+          <Badge variant="success">
+            <CheckCircle2 className="w-3 h-3" />
             <span>Resolved</span>
-          </span>
+          </Badge>
         );
       case 'failed':
       case 'rejected':
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-red-500/15 text-red-400 border border-red-500/25">
-            <AlertCircle className="w-3.5 h-3.5" />
+          <Badge variant="danger">
+            <AlertCircle className="w-3 h-3" />
             <span>Failed</span>
-          </span>
+          </Badge>
         );
       case 'analyzing':
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-indigo-500/15 text-indigo-400 border border-indigo-500/25">
-            <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+          <Badge variant="brand">
+            <RefreshCw className="w-3 h-3 animate-spin" />
             <span>Healing...</span>
-          </span>
+          </Badge>
         );
       case 'pending':
       default:
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-500/15 text-amber-400 border border-amber-500/25">
-            <Clock className="w-3.5 h-3.5" />
+          <Badge variant="warning">
+            <Clock className="w-3 h-3" />
             <span>Pending</span>
-          </span>
+          </Badge>
         );
     }
   };
 
   return (
-    <div className="min-h-screen bg-[#090D16] text-slate-100 font-sans flex flex-col selection:bg-indigo-500 selection:text-white">
-      {/* Top Mission Control Bar */}
-      <nav className="bg-slate-950/80 backdrop-blur-xl border-b border-slate-800/80 sticky top-0 z-40 px-6 py-3 transition-colors">
-        <div className="max-w-[1680px] mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-8">
-            <Link href="/" className="flex items-center gap-2.5 group">
-              <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-cyan-400 flex items-center justify-center shadow-lg shadow-indigo-500/25 group-hover:scale-105 transition-transform">
-                <RefreshCw className="w-4 h-4 text-white" />
-              </div>
-              <div className="flex flex-col">
-                <span className="text-base font-extrabold tracking-tight text-white leading-tight flex items-center gap-1.5">
-                  Healix <span className="text-[10px] px-1.5 py-0.2 rounded bg-indigo-500/20 text-indigo-400 font-mono border border-indigo-500/30">v2.0</span>
-                </span>
-                <span className="text-[10px] text-slate-400 font-mono tracking-wider">AUTONOMOUS ENGINE</span>
-              </div>
-            </Link>
-
-            <div className="hidden md:flex items-center gap-1 text-xs font-semibold">
-              <Link href="/dashboard" className="px-3 py-1.5 rounded-lg bg-indigo-500/15 text-indigo-400 font-bold border border-indigo-500/20">
-                Live Console
-              </Link>
-              <Link href="/dashboard/settings" className="px-3 py-1.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-900 transition-colors">
-                Settings & Webhooks
-              </Link>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3">
-            {/* Live Engine Pulse */}
-            <div className="hidden sm:flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-950/40 border border-emerald-500/30 text-emerald-400 text-[11px] font-mono font-semibold">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shadow-sm shadow-emerald-400" />
-              <span>LISTENER ACTIVE</span>
-            </div>
-
-            {/* Test Simulation Button */}
-            <Button
-              onClick={() => setIsSimulateOpen(true)}
-              size="sm"
-              className="bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 text-white font-bold text-xs shadow-md shadow-indigo-600/30 flex items-center gap-1.5 border border-indigo-400/30"
-            >
-              <Sparkles className="w-3.5 h-3.5 text-cyan-300" />
-              <span>Simulate Incident</span>
-            </Button>
-
-            {/* Refresh feed */}
-            <button
-              onClick={fetchAll}
-              disabled={loading}
-              className="w-8 h-8 rounded-lg bg-slate-900 border border-slate-800 flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
-              title="Refresh Incidents"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-indigo-400' : ''}`} />
-            </button>
-
-            {/* Settings Link */}
-            <Link
-              href="/dashboard/settings"
-              className="w-8 h-8 rounded-lg bg-slate-900 border border-slate-800 flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
-              title="Settings"
-            >
-              <Settings className="w-3.5 h-3.5" />
-            </Link>
-
-            {/* Session Indicator */}
-            <div className="flex items-center gap-2 pl-2 border-l border-slate-800">
-              <span className="hidden lg:inline-block text-[11px] font-mono text-slate-400 max-w-[120px] truncate">
-                {isAuthed ? userEmail || 'Authenticated' : 'Guest Demo'}
-              </span>
-              {isAuthed ? (
-                <button
-                  onClick={() => signOut({ callbackUrl: '/' })}
-                  className="w-8 h-8 rounded-lg bg-slate-900 border border-slate-800 flex items-center justify-center text-slate-400 hover:text-red-400 hover:bg-red-950/30 transition-colors cursor-pointer"
-                  title="Sign Out"
-                >
-                  <LogOut className="w-3.5 h-3.5" />
-                </button>
-              ) : (
-                <button
-                  onClick={() => {
-                    if (confirm('Clear local guest session cache?')) {
-                      SessionManager.reset();
-                      window.location.reload();
-                    }
-                  }}
-                  className="w-8 h-8 rounded-lg bg-slate-900 border border-slate-800 flex items-center justify-center text-slate-400 hover:text-red-400 hover:bg-red-950/30 transition-colors cursor-pointer"
-                  title="Reset Demo Session"
-                >
-                  <LogOut className="w-3.5 h-3.5" />
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-      </nav>
-
-      {/* Main Workspace */}
-      <div className="max-w-[1680px] w-full mx-auto px-6 py-6 flex-1 flex flex-col gap-6">
-        
+    <AppShell
+      userEmail={userEmail}
+      isAuthed={isAuthed}
+      onRefresh={fetchAll}
+      isRefreshing={loading}
+      onOpenSimulate={() => setIsSimulateOpen(true)}
+      onResetSession={() => {
+        if (isAuthed) {
+          signOut({ callbackUrl: '/' });
+        } else if (confirm('Reset guest session cache?')) {
+          SessionManager.reset();
+          window.location.reload();
+        }
+      }}
+      activeRepo={selectedRepoFilter !== 'all' ? selectedRepoFilter : undefined}
+      totalIncidents={failures.length}
+    >
+      <div className="space-y-6">
         {/* Metric Cards Grid */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <MetricCard
-            label="Total Incidents Analyzed"
+            label="Total Incidents"
             value={stats?.totalRuns ?? 0}
-            subtext="Automated failure workflows intercepted"
-            icon={<BarChart2 className="w-5 h-5 text-indigo-400" />}
-            accent="border-indigo-500/20 bg-indigo-950/10"
-            badgeText="All Repos"
+            subtext="Workflows intercepted by webhook"
+            icon={<BarChart2 className="w-4 h-4 text-[#D65A31]" />}
+            badge="All Repos"
           />
           <MetricCard
-            label="Auto-Healing Success Rate"
+            label="Auto-Healing Success"
             value={`${stats?.successRate ?? 0}%`}
-            subtext="Patches verified and approved by AI safety validator"
-            icon={<ShieldCheck className="w-5 h-5 text-emerald-400" />}
-            accent="border-emerald-500/20 bg-emerald-950/10"
-            badgeText="Verified"
+            subtext="Safety-approved code patches"
+            icon={<ShieldCheck className="w-4 h-4 text-[#26764F]" />}
+            badge="Verified"
           />
           <MetricCard
-            label="Mean Time To Recovery"
+            label="Mean Recovery Time"
             value={stats ? `${((stats.avgExecutionTimeMs || 0) / 1000).toFixed(1)}s` : '0.0s'}
-            subtext="From webhook failure to ready patch"
-            icon={<Zap className="w-5 h-5 text-amber-400" />}
-            accent="border-amber-500/20 bg-amber-950/10"
-            badgeText="Sub-Second"
+            subtext="From failure webhook to fix patch"
+            icon={<Zap className="w-4 h-4 text-[#94631A]" />}
+            badge="Automated"
           />
           <MetricCard
-            label="Auto-PRs Dispatched"
+            label="Pull Requests Opened"
             value={stats?.prsCreated ?? 0}
-            subtext="Fix pull requests opened directly on GitHub"
-            icon={<GitPullRequest className="w-5 h-5 text-cyan-400" />}
-            accent="border-cyan-500/20 bg-cyan-950/10"
-            badgeText="GitHub"
+            subtext="Fix branches staged directly on GitHub"
+            icon={<GitPullRequest className="w-4 h-4 text-[#20221F]" />}
+            badge="GitHub"
           />
         </div>
 
         {/* Master-Detail Split Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start flex-1">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           
-          {/* Left Pane: Incident Failure Feed */}
-          <div className="lg:col-span-4 flex flex-col gap-4">
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl shadow-xl overflow-hidden flex flex-col h-[820px]">
+          {/* Left Pane: Incident Failure Stream */}
+          <div className="lg:col-span-5 xl:col-span-4 flex flex-col">
+            <div className="bg-[#FFFFFF] border border-[#DDDFD7] rounded-lg shadow-2xs overflow-hidden flex flex-col h-[820px]">
               
               {/* Feed Header */}
-              <div className="px-5 py-3.5 bg-slate-950/70 border-b border-slate-800 flex items-center justify-between">
+              <div className="px-4 py-3 bg-[#F5F4EF] border-b border-[#DDDFD7] flex items-center justify-between">
                 <div>
-                  <h2 className="text-sm font-bold text-slate-100 flex items-center gap-2">
-                    <Activity className="w-4 h-4 text-indigo-400" />
+                  <h2 className="text-xs font-bold font-mono uppercase tracking-wider text-[#20221F] flex items-center gap-1.5">
+                    <Activity className="w-3.5 h-3.5 text-[#D65A31]" />
                     <span>Incident Stream</span>
                   </h2>
-                  <p className="text-[10px] text-slate-400 font-mono mt-0.5">
-                    {filteredFailures.length} of {failures.length} recorded failure events
+                  <p className="text-[11px] text-[#696D65] font-mono mt-0.5">
+                    {filteredFailures.length} of {failures.length} recorded events
                   </p>
                 </div>
                 
@@ -507,7 +417,7 @@ export default function DashboardPage() {
                   <select
                     value={selectedRepoFilter}
                     onChange={(e) => setSelectedRepoFilter(e.target.value)}
-                    className="text-[11px] font-mono bg-slate-900 text-slate-300 border border-slate-700/80 rounded-lg px-2.5 py-1 focus:outline-none focus:border-indigo-500"
+                    className="text-xs font-mono bg-[#FFFFFF] text-[#20221F] border border-[#DDDFD7] rounded px-2 py-1 focus:outline-none focus:border-[#D65A31]"
                   >
                     <option value="all">All Repositories</option>
                     {distinctRepos.map((r) => (
@@ -520,20 +430,21 @@ export default function DashboardPage() {
               </div>
 
               {/* Search & Filter Bar */}
-              <div className="p-3.5 bg-slate-950/40 border-b border-slate-800 space-y-2.5">
+              <div className="p-3 bg-[#FFFFFF] border-b border-[#DDDFD7] space-y-2.5">
                 <div className="relative">
-                  <Search className="w-3.5 h-3.5 text-slate-500 absolute left-3 top-2.5" />
+                  <Search className="w-3.5 h-3.5 text-[#A8ABA2] absolute left-2.5 top-2.5" />
                   <input
                     type="text"
                     placeholder="Search commits, branches, errors..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full pl-9 pr-3 py-1.5 bg-slate-950 border border-slate-800 rounded-lg text-xs font-mono text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-indigo-500 transition-colors"
+                    className="w-full pl-8 pr-7 py-1.5 bg-[#FFFFFF] border border-[#DDDFD7] rounded text-xs font-mono text-[#20221F] placeholder:text-[#A8ABA2] focus:outline-none focus:border-[#D65A31] focus:ring-1 focus:ring-[#D65A31]"
                   />
                   {searchQuery && (
                     <button
                       onClick={() => setSearchQuery('')}
-                      className="absolute right-2.5 top-2 text-slate-500 hover:text-slate-300 text-xs"
+                      className="absolute right-2 top-2 text-[#A8ABA2] hover:text-[#20221F] text-xs"
+                      aria-label="Clear search"
                     >
                       ×
                     </button>
@@ -541,7 +452,7 @@ export default function DashboardPage() {
                 </div>
 
                 {/* Status Filter Tabs */}
-                <div className="flex gap-1 overflow-x-auto text-[10px] font-bold uppercase tracking-wider">
+                <div className="flex gap-1 overflow-x-auto text-[10px] font-mono font-medium">
                   {[
                     { id: 'all', label: 'All', count: failures.length },
                     { id: 'resolved', label: 'Resolved', count: failures.filter((f) => (f.analysisRuns?.[0]?.reviewStatus === 'approved' || f.status === 'analyzed')).length },
@@ -552,15 +463,15 @@ export default function DashboardPage() {
                     <button
                       key={tab.id}
                       onClick={() => setStatusFilter(tab.id)}
-                      className={`px-2.5 py-1 rounded-md transition-colors whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
+                      className={`px-2 py-1 rounded transition-colors whitespace-nowrap cursor-pointer flex items-center gap-1 ${
                         statusFilter === tab.id
-                          ? 'bg-indigo-600 text-white shadow-xs font-bold'
-                          : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'
+                          ? 'bg-[#20221F] text-white font-bold'
+                          : 'text-[#696D65] hover:bg-[#ECEDE7] hover:text-[#20221F]'
                       }`}
                     >
                       <span>{tab.label}</span>
-                      <span className={`text-[9px] px-1.5 py-0.2 rounded-full ${
-                        statusFilter === tab.id ? 'bg-indigo-800 text-white' : 'bg-slate-800 text-slate-400'
+                      <span className={`text-[9px] px-1 py-0.2 rounded ${
+                        statusFilter === tab.id ? 'bg-[#353833] text-white' : 'bg-[#ECEDE7] text-[#696D65]'
                       }`}>
                         {tab.count}
                       </span>
@@ -570,93 +481,80 @@ export default function DashboardPage() {
               </div>
 
               {/* Feed List Items */}
-              <div className="flex-1 overflow-y-auto p-3 space-y-2.5 bg-slate-950/20">
+              <div className="flex-1 overflow-y-auto divide-y divide-[#DDDFD7] bg-[#FFFFFF]">
                 {loading && failures.length === 0 ? (
-                  <div className="p-8 text-center space-y-3">
-                    <RefreshCw className="w-6 h-6 text-indigo-400 animate-spin mx-auto" />
-                    <p className="text-xs text-slate-400 font-mono">Loading incident stream...</p>
+                  <div className="p-8 text-center space-y-2">
+                    <RefreshCw className="w-5 h-5 text-[#D65A31] animate-spin mx-auto" />
+                    <p className="text-xs text-[#696D65] font-mono">Loading incident stream...</p>
                   </div>
                 ) : filteredFailures.length === 0 ? (
-                  <div className="p-10 text-center space-y-4">
-                    <Database className="w-8 h-8 text-slate-600 mx-auto" />
+                  <div className="p-8 text-center space-y-3">
+                    <Database className="w-7 h-7 text-[#A8ABA2] mx-auto" />
                     <div>
-                      <p className="text-xs font-bold text-slate-300">No incident events found</p>
-                      <p className="text-[11px] text-slate-500 mt-1 font-mono">
+                      <p className="text-xs font-semibold text-[#20221F]">No incidents found</p>
+                      <p className="text-[11px] text-[#696D65] mt-1 font-mono">
                         {failures.length === 0
-                          ? 'Click "Simulate Incident" above or configure a GitHub webhook in settings.'
+                          ? 'Click "Simulate Incident" to inject a test failure.'
                           : 'Try modifying your search or status filters.'}
                       </p>
                     </div>
                     {failures.length === 0 && (
                       <Button
-                        size="sm"
+                        size="xs"
+                        variant="primary"
                         onClick={() => setIsSimulateOpen(true)}
-                        className="bg-indigo-600 text-white text-xs font-bold"
+                        className="mx-auto"
                       >
-                        <Sparkles className="w-3.5 h-3.5 mr-1 text-cyan-300" />
+                        <Sparkles className="w-3 h-3 mr-1" />
                         Simulate Test Failure
                       </Button>
                     )}
                   </div>
                 ) : (
                   filteredFailures.map((f) => {
+                    const isSelected = f.id === selectedId;
                     const run = f.analysisRuns?.[0];
-                    const isSelected = selectedId === f.id;
+
                     return (
                       <div
                         key={f.id}
                         onClick={() => setSelectedId(f.id)}
-                        className={`p-3.5 rounded-xl border transition-all cursor-pointer relative group flex flex-col gap-2 ${
+                        className={`p-3.5 transition-subtle cursor-pointer flex flex-col gap-2 relative ${
                           isSelected
-                            ? 'bg-slate-900 border-indigo-500/80 shadow-lg shadow-indigo-500/10 ring-1 ring-indigo-500/30'
-                            : 'bg-slate-950/50 border-slate-800/80 hover:border-slate-700 hover:bg-slate-900/60'
+                            ? 'bg-[#FBEFEA] border-l-3 border-l-[#D65A31]'
+                            : 'hover:bg-[#F5F4EF] border-l-3 border-l-transparent'
                         }`}
                       >
-                        {/* Top metadata */}
-                        <div className="flex items-center justify-between text-[11px]">
-                          <span className="font-mono font-bold text-slate-300 bg-slate-800/80 px-2 py-0.5 rounded border border-slate-700/60">
-                            {f.commitSha.slice(0, 7)}
+                        {/* Top Row: Repository and Time */}
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="font-semibold text-[#20221F] truncate font-mono">
+                            {f.repository.repoName}
                           </span>
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-[10px] text-slate-500 font-mono">
-                              {new Date(f.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                            </span>
-                            <button
-                              onClick={(e) => handleDeleteFailure(e, f.id)}
-                              className="p-1 rounded text-slate-500 hover:text-red-400 hover:bg-red-950/30 transition-colors opacity-0 group-hover:opacity-100 cursor-pointer"
-                              title="Delete Incident Record"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
+                          <span className="text-[10px] text-[#696D65] font-mono tabular-nums flex-shrink-0">
+                            {new Date(f.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </span>
                         </div>
 
-                        {/* Repo & Workflow */}
-                        <div>
-                          <p className="font-bold text-xs text-slate-100 truncate">
-                            {f.repository.repoName}
-                          </p>
-                          {f.workflowName && (
-                            <p className="text-[11px] text-slate-400 truncate mt-0.5 flex items-center gap-1 font-mono">
-                              <Terminal className="w-3 h-3 text-slate-500 flex-shrink-0" />
-                              <span>{f.workflowName}</span>
-                            </p>
-                          )}
+                        {/* Workflow & Commit */}
+                        <div className="flex items-center gap-2 text-[11px] text-[#696D65] font-mono">
+                          <span className="truncate">{f.workflowName || 'CI Pipeline'}</span>
+                          <span>•</span>
+                          <span className="font-semibold text-[#4B4F47]">{f.commitSha.slice(0, 7)}</span>
                         </div>
 
                         {/* Error preview snippet */}
                         {f.errorSummary && (
-                          <p className="text-[10px] text-red-400/80 font-mono truncate bg-red-950/20 px-2 py-1 rounded border border-red-900/30">
+                          <p className="text-[10px] text-[#B83D38] font-mono truncate bg-[#F8E9E6] px-2 py-1 rounded border border-[#ECC3BE]">
                             {f.errorSummary}
                           </p>
                         )}
 
                         {/* Bottom Row */}
-                        <div className="flex items-center justify-between pt-2 border-t border-slate-800/60">
+                        <div className="flex items-center justify-between pt-1">
                           {getStatusBadge(f.status, run?.reviewStatus)}
                           {f.branchName && (
-                            <div className="flex items-center gap-1 text-[10px] font-mono text-slate-400 bg-slate-900 px-2 py-0.5 rounded border border-slate-800 max-w-[130px] truncate">
-                              <GitBranch className="w-3 h-3 text-indigo-400 flex-shrink-0" />
+                            <div className="flex items-center gap-1 text-[10px] font-mono text-[#696D65] bg-[#ECEDE7] px-2 py-0.5 rounded border border-[#DDDFD7] max-w-[140px] truncate">
+                              <GitBranch className="w-3 h-3 text-[#D65A31] flex-shrink-0" />
                               <span className="truncate">{f.branchName}</span>
                             </div>
                           )}
@@ -670,50 +568,50 @@ export default function DashboardPage() {
           </div>
 
           {/* Right Pane: Incident Diagnostic & Fix Workspace */}
-          <div className="lg:col-span-8 flex flex-col gap-6">
+          <div className="lg:col-span-7 xl:col-span-8 flex flex-col gap-6">
             
             {/* Incident Diagnostic Container Card */}
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl shadow-xl overflow-hidden flex flex-col">
+            <div className="bg-[#FFFFFF] border border-[#DDDFD7] rounded-lg shadow-2xs overflow-hidden flex flex-col">
               
               {/* Header Bar */}
-              <div className="p-6 bg-slate-950/80 border-b border-slate-800 flex flex-row items-start justify-between flex-wrap gap-4">
+              <div className="p-5 bg-[#F5F4EF] border-b border-[#DDDFD7] flex flex-row items-start justify-between flex-wrap gap-4">
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-mono font-bold text-indigo-400 uppercase tracking-widest bg-indigo-500/10 px-2 py-0.5 rounded border border-indigo-500/20">
+                    <span className="text-[10px] font-mono font-bold text-[#D65A31] uppercase tracking-wider bg-[#FBEFEA] px-2 py-0.5 rounded border border-[#F1CCBE]">
                       INCIDENT DIAGNOSTIC
                     </span>
                     {selected && getStatusBadge(selected.status, latestRun?.reviewStatus)}
                   </div>
-                  <h1 className="text-xl font-extrabold tracking-tight text-white mt-1">
-                    {selected ? selected.repository.repoName : 'Select a failure incident'}
+                  <h1 className="text-base font-bold tracking-tight text-[#20221F] mt-1">
+                    {selected ? selected.repository.repoName : 'Select an incident from the stream'}
                   </h1>
                   {selected && (
-                    <div className="flex items-center gap-3 text-xs text-slate-400 font-mono mt-1.5 flex-wrap">
+                    <div className="flex items-center gap-3 text-xs text-[#696D65] font-mono mt-1 flex-wrap">
                       <div className="flex items-center gap-1">
-                        <GitBranch className="w-3.5 h-3.5 text-indigo-400" />
+                        <GitBranch className="w-3.5 h-3.5 text-[#D65A31]" />
                         <span>{selected.branchName || 'main'}</span>
                         <button
                           onClick={handleCopyBranch}
-                          className="text-slate-500 hover:text-slate-300 ml-0.5"
+                          className="text-[#696D65] hover:text-[#20221F] ml-0.5 cursor-pointer"
                           title="Copy Branch"
                         >
-                          {copiedBranch ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                          {copiedBranch ? <Check className="w-3 h-3 text-[#26764F]" /> : <Copy className="w-3 h-3" />}
                         </button>
                       </div>
-                      <span className="text-slate-700">•</span>
+                      <span>•</span>
                       <div className="flex items-center gap-1">
                         <span>SHA: {selected.commitSha.slice(0, 8)}</span>
                         <button
                           onClick={handleCopySha}
-                          className="text-slate-500 hover:text-slate-300 ml-0.5"
+                          className="text-[#696D65] hover:text-[#20221F] ml-0.5 cursor-pointer"
                           title="Copy Commit SHA"
                         >
-                          {copiedSha ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                          {copiedSha ? <Check className="w-3 h-3 text-[#26764F]" /> : <Copy className="w-3 h-3" />}
                         </button>
                       </div>
                       {selected.workflowRunId && (
                         <>
-                          <span className="text-slate-700">•</span>
+                          <span>•</span>
                           <span>Run #{selected.workflowRunId}</span>
                         </>
                       )}
@@ -722,12 +620,12 @@ export default function DashboardPage() {
                 </div>
 
                 {selected && (
-                  <div className="flex items-center gap-2.5 flex-wrap">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <Button
                       onClick={(e) => handleDeleteFailure(e, selected.id)}
                       variant="outline"
                       size="sm"
-                      className="border-slate-800 text-slate-400 hover:text-red-400 hover:bg-red-950/20"
+                      className="text-[#696D65] hover:text-[#B83D38] hover:border-[#ECC3BE]"
                       leftIcon={<Trash2 className="w-3.5 h-3.5" />}
                     >
                       Delete
@@ -735,8 +633,8 @@ export default function DashboardPage() {
                     <Button
                       onClick={triggerHeal}
                       isLoading={healing}
+                      variant="primary"
                       size="sm"
-                      className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold shadow-md shadow-indigo-600/20"
                     >
                       {healing ? 'Analyzing Pipeline...' : selected.status === 'pending' ? 'Initiate AI Heal' : 'Re-Run AI Heal'}
                     </Button>
@@ -745,72 +643,72 @@ export default function DashboardPage() {
               </div>
 
               {/* Main Content Area */}
-              <div className="p-6 space-y-6">
+              <div className="p-5 space-y-6">
                 {!selected ? (
-                  <div className="py-24 text-center space-y-4">
-                    <Terminal className="w-12 h-12 text-slate-700 mx-auto" />
+                  <div className="py-20 text-center space-y-3">
+                    <Terminal className="w-10 h-10 text-[#A8ABA2] mx-auto" />
                     <div>
-                      <h3 className="text-sm font-bold text-slate-300">No Incident Loaded</h3>
-                      <p className="text-xs text-slate-500 max-w-sm mx-auto mt-1 font-mono">
-                        Select an incident from the stream on the left or simulate a new failure to inspect AI diagnostics and code patches.
+                      <h3 className="text-sm font-semibold text-[#20221F]">No Incident Loaded</h3>
+                      <p className="text-xs text-[#696D65] max-w-sm mx-auto mt-1 font-mono">
+                        Select an incident from the stream or simulate a new failure to inspect AI diagnostics and code patches.
                       </p>
                     </div>
                     <Button
                       size="sm"
+                      variant="primary"
                       onClick={() => setIsSimulateOpen(true)}
-                      className="bg-indigo-600 text-white text-xs font-bold"
                     >
-                      <Sparkles className="w-3.5 h-3.5 mr-1.5 text-cyan-300" />
+                      <Sparkles className="w-3.5 h-3.5 mr-1.5" />
                       Simulate Test Failure
                     </Button>
                   </div>
                 ) : (
                   <div className="space-y-6">
                     {/* Pipeline Stage Visualizer */}
-                    <div className="space-y-2.5">
+                    <div className="space-y-2">
                       <div className="flex items-center justify-between">
-                        <span className="text-[11px] font-mono font-bold text-slate-400 uppercase tracking-wider">
-                          Autonomous Healing Stepper
+                        <span className="text-[11px] font-mono font-bold text-[#696D65] uppercase tracking-wider">
+                          Autonomous Remediation Stepper
                         </span>
                         {latestRun?.executionTimeMs && (
-                          <span className="text-[11px] font-mono text-emerald-400 flex items-center gap-1">
+                          <span className="text-[11px] font-mono text-[#26764F] flex items-center gap-1 font-semibold">
                             <Clock className="w-3 h-3" />
-                            <span>{(latestRun.executionTimeMs / 1000).toFixed(2)}s execution</span>
+                            <span>{(latestRun.executionTimeMs / 1000).toFixed(2)}s runtime</span>
                           </span>
                         )}
                       </div>
 
-                      <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
+                      <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
                         {[
                           { label: '1. Ingest Webhook', done: true, current: false, desc: 'Intercepted failure' },
                           { label: '2. Gemini Root Cause', done: !!latestRun, current: selected.status === 'analyzing', desc: 'Analyzed trace logs' },
-                          { label: '3. GPT-OSS Patch', done: !!latestRun?.patch, current: false, desc: 'Compiled diff' },
+                          { label: '3. Patch Generation', done: !!latestRun?.patch, current: false, desc: 'Compiled diff' },
                           { label: '4. Safety Review', done: !!latestRun?.reviewStatus, current: false, desc: latestRun?.reviewStatus || 'Pending' },
                           { label: '5. Auto PR Dispatch', done: !!latestRun?.prLink, current: false, desc: latestRun?.prLink ? 'PR staged' : 'Conditional' },
                         ].map((step, idx) => (
                           <div
                             key={idx}
-                            className={`p-3 rounded-xl border transition-all flex flex-col gap-1 ${
+                            className={`p-2.5 rounded-md border flex flex-col gap-1 transition-subtle ${
                               step.done
-                                ? 'bg-indigo-950/20 border-indigo-500/40 text-slate-200'
+                                ? 'bg-[#E8F2EA] border-[#C3DEC8] text-[#26764F]'
                                 : step.current
-                                ? 'bg-indigo-950/40 border-indigo-400 ring-1 ring-indigo-400/30 text-white animate-pulse'
-                                : 'bg-slate-950/30 border-slate-800/60 opacity-40 text-slate-500'
+                                ? 'bg-[#FBEFEA] border-[#D65A31] ring-1 ring-[#D65A31] text-[#D65A31]'
+                                : 'bg-[#F5F4EF] border-[#DDDFD7] text-[#696D65]'
                             }`}
                           >
                             <div className="flex items-center justify-between">
-                              <span className="text-[10px] font-bold font-mono uppercase tracking-wider">
+                              <span className="text-[10px] font-mono font-semibold uppercase tracking-wider">
                                 {step.label}
                               </span>
                               {step.done ? (
-                                <Check className="w-3.5 h-3.5 text-emerald-400" />
+                                <Check className="w-3.5 h-3.5 text-[#26764F]" />
                               ) : step.current ? (
-                                <RefreshCw className="w-3.5 h-3.5 text-indigo-400 animate-spin" />
+                                <RefreshCw className="w-3.5 h-3.5 text-[#D65A31] animate-spin" />
                               ) : (
-                                <span className="w-2 h-2 rounded-full bg-slate-700" />
+                                <span className="w-1.5 h-1.5 rounded-full bg-[#C4C7BE]" />
                               )}
                             </div>
-                            <span className="text-[10px] text-slate-400 font-mono truncate">
+                            <span className="text-[10px] text-[#696D65] font-mono truncate">
                               {step.desc}
                             </span>
                           </div>
@@ -820,30 +718,30 @@ export default function DashboardPage() {
 
                     {/* AI Diagnostics Cards */}
                     {latestRun ? (
-                      <div className="space-y-6 pt-2 border-t border-slate-800">
+                      <div className="space-y-5 pt-2 border-t border-[#DDDFD7]">
                         {/* 3 Overview Info Chips */}
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                           {/* Category */}
-                          <div className="bg-slate-950/60 rounded-xl border border-slate-800 p-3.5 flex flex-col justify-between gap-2">
-                            <span className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider">
+                          <div className="bg-[#F5F4EF] rounded-md border border-[#DDDFD7] p-3 flex flex-col justify-between gap-1.5">
+                            <span className="text-[10px] font-mono font-semibold text-[#696D65] uppercase tracking-wider">
                               Error Classification
                             </span>
-                            <div>{renderCategoryTag(latestRun.category)}</div>
+                            <div>{renderCategoryBadge(latestRun.category)}</div>
                           </div>
 
                           {/* Confidence */}
-                          <div className="bg-slate-950/60 rounded-xl border border-slate-800 p-3.5 flex flex-col justify-between gap-2">
-                            <span className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider">
+                          <div className="bg-[#F5F4EF] rounded-md border border-[#DDDFD7] p-3 flex flex-col justify-between gap-1.5">
+                            <span className="text-[10px] font-mono font-semibold text-[#696D65] uppercase tracking-wider">
                               AI Confidence Score
                             </span>
                             <div>
-                              <div className="flex items-center justify-between text-xs font-bold font-mono text-slate-200 mb-1">
+                              <div className="flex items-center justify-between text-xs font-mono font-bold text-[#20221F] mb-1">
                                 <span>{(latestRun.confidence * 100).toFixed(0)}%</span>
-                                <span className="text-[10px] text-indigo-400">Deterministic</span>
+                                <span className="text-[10px] text-[#D65A31]">Deterministic</span>
                               </div>
-                              <div className="h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                              <div className="h-1.5 bg-[#DDDFD7] rounded-full overflow-hidden">
                                 <div
-                                  className="h-full bg-gradient-to-r from-indigo-500 to-cyan-400 rounded-full transition-all duration-500"
+                                  className="h-full bg-[#D65A31] rounded-full"
                                   style={{ width: `${latestRun.confidence * 100}%` }}
                                 />
                               </div>
@@ -851,62 +749,64 @@ export default function DashboardPage() {
                           </div>
 
                           {/* Risk Level */}
-                          <div className="bg-slate-950/60 rounded-xl border border-slate-800 p-3.5 flex flex-col justify-between gap-2">
-                            <span className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider">
+                          <div className="bg-[#F5F4EF] rounded-md border border-[#DDDFD7] p-3 flex flex-col justify-between gap-1.5">
+                            <span className="text-[10px] font-mono font-semibold text-[#696D65] uppercase tracking-wider">
                               Safety Risk Index
                             </span>
                             <div>
                               {latestRun.reviewRiskLevel ? (
-                                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-xs font-bold capitalize ${
-                                  latestRun.reviewRiskLevel === 'high'
-                                    ? 'text-red-400 bg-red-500/10 border-red-500/30'
-                                    : latestRun.reviewRiskLevel === 'medium'
-                                    ? 'text-amber-400 bg-amber-500/10 border-amber-500/30'
-                                    : 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30'
-                                }`}>
+                                <Badge
+                                  variant={
+                                    latestRun.reviewRiskLevel === 'high'
+                                      ? 'danger'
+                                      : latestRun.reviewRiskLevel === 'medium'
+                                      ? 'warning'
+                                      : 'success'
+                                  }
+                                >
                                   <ShieldCheck className="w-3.5 h-3.5" />
-                                  <span>{latestRun.reviewRiskLevel} Risk</span>
-                                </span>
+                                  <span className="capitalize">{latestRun.reviewRiskLevel} Risk</span>
+                                </Badge>
                               ) : (
-                                <span className="text-slate-500 text-xs">—</span>
+                                <span className="text-[#696D65] text-xs">—</span>
                               )}
                             </div>
                           </div>
                         </div>
 
                         {/* Root Cause Details */}
-                        <div className="bg-slate-950/60 border border-slate-800 rounded-xl p-5 space-y-2">
-                          <div className="flex items-center justify-between">
-                            <span className="text-[11px] font-mono font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-                              <Cpu className="w-3.5 h-3.5 text-indigo-400" />
+                        <div className="bg-[#FFFFFF] border border-[#DDDFD7] rounded-md p-4 space-y-2">
+                          <div className="flex items-center justify-between flex-wrap gap-2">
+                            <span className="text-[11px] font-mono font-bold text-[#20221F] uppercase tracking-wider flex items-center gap-1.5">
+                              <Cpu className="w-3.5 h-3.5 text-[#D65A31]" />
                               <span>Gemini Diagnosis & Root Cause</span>
                             </span>
                             {latestRun.affectedFile && (
-                              <span className="text-[11px] font-mono text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 px-2 py-0.5 rounded">
+                              <span className="text-[11px] font-mono text-[#D65A31] bg-[#FBEFEA] border border-[#F1CCBE] px-2 py-0.5 rounded font-medium">
                                 {latestRun.affectedFile}
                               </span>
                             )}
                           </div>
-                          <p className="text-xs text-slate-200 leading-relaxed font-mono">
+                          <p className="text-xs text-[#20221F] leading-relaxed font-mono whitespace-pre-wrap">
                             {latestRun.rootCause}
                           </p>
                         </div>
 
                         {/* Validator Verdict Alert */}
                         {latestRun.reviewReason && (
-                          <div className={`p-4 rounded-xl border flex items-start gap-3 ${
+                          <div className={`p-3.5 rounded-md border flex items-start gap-2.5 ${
                             latestRun.reviewStatus === 'approved'
-                              ? 'bg-emerald-950/20 border-emerald-500/30 text-emerald-300'
-                              : 'bg-red-950/20 border-red-500/30 text-red-300'
+                              ? 'bg-[#E8F2EA] border-[#C3DEC8] text-[#26764F]'
+                              : 'bg-[#F8E9E6] border-[#ECC3BE] text-[#B83D38]'
                           }`}>
                             {latestRun.reviewStatus === 'approved' ? (
-                              <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" />
+                              <CheckCircle2 className="w-4 h-4 text-[#26764F] flex-shrink-0 mt-0.5" />
                             ) : (
-                              <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" />
+                              <AlertCircle className="w-4 h-4 text-[#B83D38] flex-shrink-0 mt-0.5" />
                             )}
-                            <div className="space-y-1">
+                            <div className="space-y-0.5">
                               <span className="text-[11px] font-bold uppercase tracking-wider font-mono block">
-                                GPT-OSS-120B Validator Verdict: {latestRun.reviewStatus?.toUpperCase()}
+                                Safety Review Verdict: {latestRun.reviewStatus?.toUpperCase()}
                               </span>
                               <p className="text-xs font-mono leading-relaxed">
                                 {latestRun.reviewReason}
@@ -917,8 +817,8 @@ export default function DashboardPage() {
 
                         {/* Generated Patch Diff Viewer */}
                         {latestRun.patch && (
-                          <div className="space-y-2">
-                            <span className="text-[11px] font-mono font-bold text-slate-400 uppercase tracking-wider block">
+                          <div className="space-y-1.5">
+                            <span className="text-[11px] font-mono font-bold text-[#696D65] uppercase tracking-wider block">
                               Synthesized Autonomous Code Fix
                             </span>
                             <DiffViewer patch={latestRun.patch} filename={latestRun.affectedFile} />
@@ -927,21 +827,21 @@ export default function DashboardPage() {
 
                         {/* PR Banner */}
                         {latestRun.prLink && (
-                          <div className="p-4 bg-gradient-to-r from-indigo-950/60 to-slate-900 border border-indigo-500/40 rounded-xl flex items-center justify-between flex-wrap gap-4 shadow-lg">
-                            <div className="space-y-1">
-                              <h4 className="text-xs font-bold text-slate-100 flex items-center gap-2">
-                                <GitPullRequest className="w-4 h-4 text-indigo-400" />
+                          <div className="p-4 bg-[#FFFFFF] border border-[#DDDFD7] rounded-md flex items-center justify-between flex-wrap gap-4 shadow-2xs">
+                            <div className="space-y-0.5">
+                              <h4 className="text-xs font-bold text-[#20221F] flex items-center gap-2">
+                                <GitPullRequest className="w-4 h-4 text-[#D65A31]" />
                                 <span>Pull Request Staged on GitHub</span>
                               </h4>
-                              <p className="text-[11px] text-slate-400 font-mono">
-                                Branch: <span className="text-indigo-300 font-bold">{latestRun.prBranch || 'healix/fix'}</span>
+                              <p className="text-[11px] text-[#696D65] font-mono">
+                                Branch: <span className="text-[#20221F] font-semibold">{latestRun.prBranch || 'healix/fix'}</span>
                               </p>
                             </div>
                             <a
                               href={latestRun.prLink}
                               target="_blank"
                               rel="noreferrer"
-                              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-bold transition-all shadow-md flex items-center gap-1.5"
+                              className="px-3.5 py-2 bg-[#20221F] hover:bg-[#353833] text-white rounded-md text-xs font-medium transition-colors flex items-center gap-1.5 shadow-2xs"
                             >
                               <span>View PR on GitHub</span>
                               <ExternalLink className="w-3.5 h-3.5" />
@@ -951,33 +851,41 @@ export default function DashboardPage() {
                       </div>
                     ) : (
                       /* When no analysis run exists yet */
-                      <div className="bg-slate-950/60 border border-slate-800 rounded-xl p-5 space-y-4">
-                        <div className="flex items-center gap-2 border-b border-slate-800 pb-3">
-                          <span className="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse" />
-                          <span className="text-xs font-bold text-slate-200">Failure Staged — Diagnosis Pending</span>
+                      <div className="bg-[#F5F4EF] border border-[#DDDFD7] rounded-md p-4 space-y-2">
+                        <div className="flex items-center gap-2">
+                          <span className="w-2 h-2 rounded-full bg-[#94631A]" />
+                          <span className="text-xs font-bold text-[#20221F]">Failure Captured — Diagnosis Pending</span>
                         </div>
-                        <p className="text-xs text-slate-400 font-mono leading-relaxed">
-                          This incident was captured from the CI/CD pipeline. Click "Initiate AI Heal" above to analyze the error logs and generate a validated code repair.
+                        <p className="text-xs text-[#696D65] font-mono leading-relaxed">
+                          This incident was captured from the CI/CD pipeline. Click &quot;Initiate AI Heal&quot; above to analyze the error logs and generate a validated code repair.
                         </p>
                       </div>
                     )}
 
                     {/* Expandable Raw Terminal Logs Drawer */}
                     {(selected.logs || selected.errorSummary) && (
-                      <div className="border border-slate-800 rounded-xl bg-slate-950 overflow-hidden">
-                        <button
-                          onClick={() => setShowLogsDrawer(!showLogsDrawer)}
-                          className="w-full px-4 py-2.5 bg-slate-950 flex items-center justify-between text-xs font-mono font-bold text-slate-400 hover:text-slate-200 hover:bg-slate-900/60 transition-colors cursor-pointer"
-                        >
-                          <div className="flex items-center gap-2">
-                            <Terminal className="w-3.5 h-3.5 text-indigo-400" />
+                      <div className="border border-[#353934] rounded-md bg-[#191B19] overflow-hidden">
+                        <div className="px-3.5 py-2 bg-[#222522] flex items-center justify-between text-xs font-mono text-[#E8E9E3]">
+                          <button
+                            onClick={() => setShowLogsDrawer(!showLogsDrawer)}
+                            className="flex items-center gap-2 font-medium hover:text-white transition-colors cursor-pointer"
+                          >
+                            <Terminal className="w-3.5 h-3.5 text-[#A0A49B]" />
                             <span>Raw CI/CD Pipeline Trace Logs</span>
-                          </div>
-                          {showLogsDrawer ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                        </button>
+                            {showLogsDrawer ? <ChevronUp className="w-3.5 h-3.5 text-[#A0A49B]" /> : <ChevronDown className="w-3.5 h-3.5 text-[#A0A49B]" />}
+                          </button>
+                          <button
+                            onClick={handleCopyLogs}
+                            className="px-2 py-0.5 rounded bg-[#191B19] hover:bg-[#2D312D] text-[11px] text-[#A0A49B] hover:text-[#E8E9E3] border border-[#353934] flex items-center gap-1 transition-colors cursor-pointer"
+                            title="Copy Raw Trace Logs"
+                          >
+                            {copiedLogs ? <Check className="w-3 h-3 text-[#83C995]" /> : <Copy className="w-3 h-3" />}
+                            <span>{copiedLogs ? 'Copied' : 'Copy Logs'}</span>
+                          </button>
+                        </div>
                         {showLogsDrawer && (
-                          <div className="p-4 bg-slate-950 border-t border-slate-800 max-h-80 overflow-y-auto">
-                            <pre className="font-mono text-[11px] text-red-400/90 whitespace-pre-wrap leading-relaxed select-text">
+                          <div className="p-4 bg-[#191B19] border-t border-[#353934] max-h-80 overflow-y-auto terminal-scroll">
+                            <pre className="font-mono text-[11px] text-[#E58C85] whitespace-pre-wrap leading-relaxed select-text">
                               {selected.logs || selected.errorSummary}
                             </pre>
                           </div>
@@ -990,29 +898,29 @@ export default function DashboardPage() {
             </div>
 
             {/* Bottom Panel: Incident Distribution Analytics */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Category Breakdown */}
-              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4">
-                <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-                  <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wider font-mono">
+              <div className="bg-[#FFFFFF] border border-[#DDDFD7] rounded-lg p-4 shadow-2xs space-y-3">
+                <div className="flex items-center justify-between border-b border-[#DDDFD7] pb-2">
+                  <h3 className="text-xs font-bold text-[#20221F] uppercase tracking-wider font-mono">
                     Failure Categories Distribution
                   </h3>
-                  <span className="text-[10px] text-slate-500 font-mono">Classification</span>
+                  <span className="text-[10px] text-[#696D65] font-mono">Classification</span>
                 </div>
                 {analytics && Object.keys(analytics.categoryBreakdown).length > 0 ? (
-                  <div className="space-y-3">
+                  <div className="space-y-2.5">
                     {Object.entries(analytics.categoryBreakdown).map(([cat, count]) => {
                       const total = Object.values(analytics.categoryBreakdown).reduce((a, b) => a + b, 0);
                       const pct = total > 0 ? Math.round((count / total) * 100) : 0;
                       return (
                         <div key={cat} className="space-y-1">
                           <div className="flex justify-between items-center text-xs">
-                            <span className="font-semibold">{renderCategoryTag(cat)}</span>
-                            <span className="font-mono text-slate-400 font-bold">{count} ({pct}%)</span>
+                            <span className="font-semibold">{renderCategoryBadge(cat)}</span>
+                            <span className="font-mono text-[#696D65] font-bold tabular-nums">{count} ({pct}%)</span>
                           </div>
-                          <div className="h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                          <div className="h-1.5 bg-[#ECEDE7] rounded-full overflow-hidden">
                             <div
-                              className="h-full bg-indigo-500 rounded-full transition-all duration-500"
+                              className="h-full bg-[#D65A31] rounded-full"
                               style={{ width: `${pct}%` }}
                             />
                           </div>
@@ -1021,38 +929,38 @@ export default function DashboardPage() {
                     })}
                   </div>
                 ) : (
-                  <div className="py-6 text-center text-xs text-slate-500 italic font-mono">
+                  <div className="py-4 text-center text-xs text-[#696D65] font-mono">
                     No category telemetry available yet.
                   </div>
                 )}
               </div>
 
               {/* Risk Distribution */}
-              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4">
-                <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-                  <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wider font-mono">
-                    AI Safety & Risk Distribution
+              <div className="bg-[#FFFFFF] border border-[#DDDFD7] rounded-lg p-4 shadow-2xs space-y-3">
+                <div className="flex items-center justify-between border-b border-[#DDDFD7] pb-2">
+                  <h3 className="text-xs font-bold text-[#20221F] uppercase tracking-wider font-mono">
+                    Safety & Risk Distribution
                   </h3>
-                  <span className="text-[10px] text-slate-500 font-mono">Audit Index</span>
+                  <span className="text-[10px] text-[#696D65] font-mono">Guardrails</span>
                 </div>
                 {analytics && Object.keys(analytics.riskLevelBreakdown).length > 0 ? (
-                  <div className="space-y-3">
+                  <div className="space-y-2.5">
                     {Object.entries(analytics.riskLevelBreakdown).map(([risk, count]) => {
                       const total = Object.values(analytics.riskLevelBreakdown).reduce((a, b) => a + b, 0);
                       const pct = total > 0 ? Math.round((count / total) * 100) : 0;
-                      const color =
-                        risk === 'high' ? 'bg-red-500 text-red-400' : risk === 'medium' ? 'bg-amber-500 text-amber-400' : 'bg-emerald-500 text-emerald-400';
+                      const barColor =
+                        risk === 'high' ? 'bg-[#B83D38]' : risk === 'medium' ? 'bg-[#94631A]' : 'bg-[#26764F]';
                       return (
                         <div key={risk} className="space-y-1">
                           <div className="flex justify-between items-center text-xs">
-                            <span className={`font-mono font-bold capitalize ${color.split(' ')[1]}`}>
+                            <span className="font-mono font-bold capitalize text-[#20221F]">
                               {risk} Risk
                             </span>
-                            <span className="font-mono text-slate-400 font-bold">{count} ({pct}%)</span>
+                            <span className="font-mono text-[#696D65] font-bold tabular-nums">{count} ({pct}%)</span>
                           </div>
-                          <div className="h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                          <div className="h-1.5 bg-[#ECEDE7] rounded-full overflow-hidden">
                             <div
-                              className={`h-full ${color.split(' ')[0]} rounded-full transition-all duration-500`}
+                              className={`h-full ${barColor} rounded-full`}
                               style={{ width: `${pct}%` }}
                             />
                           </div>
@@ -1061,7 +969,7 @@ export default function DashboardPage() {
                     })}
                   </div>
                 ) : (
-                  <div className="py-6 text-center text-xs text-slate-500 italic font-mono">
+                  <div className="py-4 text-center text-xs text-[#696D65] font-mono">
                     No risk evaluation records available yet.
                   </div>
                 )}
@@ -1082,7 +990,7 @@ export default function DashboardPage() {
         }}
         defaultRepo={selected?.repository.repoName || 'Hanzlase/healixtesting'}
       />
-    </div>
+    </AppShell>
   );
 }
 
@@ -1091,38 +999,36 @@ function MetricCard({
   value,
   subtext,
   icon,
-  accent,
-  badgeText,
+  badge,
 }: {
   label: string;
   value: string | number;
   subtext: string;
   icon: React.ReactNode;
-  accent: string;
-  badgeText?: string;
+  badge?: string;
 }) {
   return (
-    <div className={`p-5 rounded-2xl border ${accent} bg-slate-900 shadow-xl flex flex-col justify-between transition-all hover:border-slate-700`}>
+    <div className="p-4 rounded-lg border border-[#DDDFD7] bg-[#FFFFFF] shadow-2xs flex flex-col justify-between">
       <div className="flex items-start justify-between">
-        <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-400">
+        <span className="text-[11px] font-mono font-semibold uppercase tracking-wider text-[#696D65]">
           {label}
         </span>
-        <div className="w-8 h-8 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-center flex-shrink-0">
+        <div className="w-7 h-7 rounded-md bg-[#F5F4EF] border border-[#DDDFD7] flex items-center justify-center flex-shrink-0">
           {icon}
         </div>
       </div>
-      <div className="mt-4">
+      <div className="mt-3">
         <div className="flex items-baseline gap-2">
-          <span className="text-3xl font-black font-mono tracking-tight text-white leading-none">
+          <span className="text-2xl font-bold font-mono tracking-tight text-[#20221F] leading-none tabular-nums">
             {value}
           </span>
-          {badgeText && (
-            <span className="text-[9px] font-mono font-semibold px-1.5 py-0.5 rounded bg-slate-800 text-slate-400">
-              {badgeText}
+          {badge && (
+            <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-[#ECEDE7] text-[#696D65] border border-[#DDDFD7]">
+              {badge}
             </span>
           )}
         </div>
-        <p className="text-[11px] text-slate-400 font-mono mt-1.5 leading-snug">
+        <p className="text-[11px] text-[#696D65] mt-1 leading-snug">
           {subtext}
         </p>
       </div>

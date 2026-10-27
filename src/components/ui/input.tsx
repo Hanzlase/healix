@@ -18,7 +18,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
         {label && (
           <label
             htmlFor={inputId}
-            className="block text-xs font-bold text-surface-700 uppercase tracking-wider"
+            className="block text-xs font-medium text-[#4B4F47]"
           >
             {label}
           </label>
@@ -29,20 +29,20 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
           type={type}
           aria-invalid={!!error}
           aria-describedby={error ? errorId : helperText ? helperId : undefined}
-          className={`w-full px-3.5 py-2.5 bg-white border rounded-lg text-sm transition-smooth placeholder:text-surface-400 focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/10 disabled:bg-surface-50 disabled:text-surface-400 disabled:cursor-not-allowed ${
+          className={`w-full px-3 py-2 bg-white border rounded-md text-sm text-[#20221F] placeholder:text-[#A8ABA2] transition-subtle focus:outline-none focus:border-[#D65A31] focus:ring-2 focus:ring-[#D65A31]/15 disabled:bg-[#ECEDE7] disabled:text-[#A8ABA2] disabled:cursor-not-allowed ${
             error
-              ? 'border-red-300 focus:border-red-500 focus:ring-red-500/10'
-              : 'border-surface-200 focus:border-brand-500'
+              ? 'border-[#ECC3BE] focus:border-[#B83D38] focus:ring-[#B83D38]/15 bg-[#F8E9E6]/30'
+              : 'border-[#DDDFD7]'
           } ${className}`}
           {...props}
         />
         {error && (
-          <p id={errorId} className="text-xs font-semibold text-red-600">
+          <p id={errorId} className="text-xs text-[#B83D38] font-medium">
             {error}
           </p>
         )}
         {!error && helperText && (
-          <p id={helperId} className="text-xs text-surface-400">
+          <p id={helperId} className="text-xs text-[#696D65]">
             {helperText}
           </p>
         )}
