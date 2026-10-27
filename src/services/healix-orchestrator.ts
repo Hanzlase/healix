@@ -26,7 +26,7 @@ export async function runHealixPipeline(params: {
   const markFailed = options?.markFailed ?? true;
 
   const locked = await prisma.pipelineFailure.updateMany({
-    where: { id: params.failureId, status: { in: ['pending', 'failed'] } },
+    where: { id: params.failureId, status: { in: ['pending', 'failed', 'analyzed'] } },
     data: { status: 'analyzing' },
   });
 
@@ -46,6 +46,14 @@ export async function runHealixPipeline(params: {
     repo: params.repo,
   });
 
+  // Fetch repository token from database if available (or env fallback)
+  const repoRecord = await prisma.repository.findFirst({
+    where: {
+      repoName: `${params.owner}/${params.repo}`,
+    },
+  });
+  const token = (repoRecord as any)?.githubToken || (failure.repository as any)?.githubToken || process.env.GITHUB_TOKEN;
+
   try {
     // ── Phase 1: GitHub context (logs + diff + failed steps) ──────────────
     const gh = await fetchGithubContext({
@@ -53,6 +61,7 @@ export async function runHealixPipeline(params: {
       repo: params.repo,
       workflowRunId: params.workflowRunId,
       commitSha: params.commitSha,
+      token,
     });
 
     // Save raw logs to DB
@@ -69,14 +78,6 @@ export async function runHealixPipeline(params: {
 
     // ── Phase 3: Root cause analysis (Gemini) ────────────────────────────
     const root = await analyzeRootCause(aiCtx);
-
-    // Fetch repository token from database if available
-    const repoRecord = await prisma.repository.findFirst({
-      where: {
-        repoName: `${params.owner}/${params.repo}`,
-      },
-    });
-    const token = (repoRecord as any)?.githubToken || process.env.GITHUB_TOKEN;
 
     let fileContent = '';
     try {

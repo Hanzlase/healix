@@ -30,10 +30,13 @@ export async function GET(req: NextRequest) {
 
     if (!user) return NextResponse.json([], { headers: { 'x-request-id': requestId } });
 
+    const guestRepos = guestReposParam ? guestReposParam.split(',').filter(Boolean) : [];
     const repos = await prisma.repository.findMany({
       where: { 
         userId: user.id,
-        ...((session?.user && (session.user as any).id) ? {} : { repoName: { in: guestReposParam ? guestReposParam.split(',') : [] } })
+        ...((session?.user && (session.user as any).id) 
+          ? {} 
+          : (guestRepos.length > 0 ? { repoName: { in: guestRepos } } : {}))
       },
       include: { _count: { select: { failures: true } } },
       orderBy: { createdAt: 'desc' },

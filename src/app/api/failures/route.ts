@@ -15,15 +15,18 @@ export async function GET(req: NextRequest) {
     let userClause = {};
     if (session?.user && (session.user as any).id) {
       userClause = { repository: { userId: (session.user as any).id } };
-    } else if (guestReposParam) {
-      const repos = guestReposParam.split(',');
+    } else {
       const systemEmail = 'system@healix.local';
       const sysUser = await prisma.user.findUnique({ where: { email: systemEmail } });
       if (!sysUser) return NextResponse.json({ failures: [], nextCursor: null });
-      userClause = { repository: { userId: sysUser.id, repoName: { in: repos } } };
-    } else {
-      // Guest with no repos, return empty
-      return NextResponse.json({ failures: [], nextCursor: null });
+
+      const repos = guestReposParam ? guestReposParam.split(',').filter(Boolean) : [];
+      if (repos.length > 0) {
+        userClause = { repository: { userId: sysUser.id, repoName: { in: repos } } };
+      } else {
+        // Default to all failures associated with system repositories so visitors see full live demo data
+        userClause = { repository: { userId: sysUser.id } };
+      }
     }
 
     const failures = await prisma.pipelineFailure.findMany({

@@ -12,14 +12,17 @@ export async function GET(req: NextRequest) {
     let userClause = {};
     if (session?.user && (session.user as any).id) {
       userClause = { failure: { repository: { userId: (session.user as any).id } } };
-    } else if (guestReposParam) {
-      const repos = guestReposParam.split(',');
+    } else {
       const systemEmail = 'system@healix.local';
       const sysUser = await prisma.user.findUnique({ where: { email: systemEmail } });
       if (!sysUser) return NextResponse.json({ totalRuns: 0, approvedRuns: 0, successRate: 0, avgExecutionTimeMs: 0, avgConfidence: '0.0', prsCreated: 0 });
-      userClause = { failure: { repository: { userId: sysUser.id, repoName: { in: repos } } } };
-    } else {
-      return NextResponse.json({ totalRuns: 0, approvedRuns: 0, successRate: 0, avgExecutionTimeMs: 0, avgConfidence: '0.0', prsCreated: 0 });
+
+      const repos = guestReposParam ? guestReposParam.split(',').filter(Boolean) : [];
+      if (repos.length > 0) {
+        userClause = { failure: { repository: { userId: sysUser.id, repoName: { in: repos } } } };
+      } else {
+        userClause = { failure: { repository: { userId: sysUser.id } } };
+      }
     }
 
     const [

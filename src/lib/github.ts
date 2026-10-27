@@ -1,9 +1,9 @@
 import { Octokit } from '@octokit/rest';
 import type { GithubContext } from '@/lib/types';
 
-function getOctokit() {
-  const token = process.env.GITHUB_TOKEN;
-  return new Octokit(token ? { auth: token } : undefined);
+function getOctokit(token?: string) {
+  const authToken = token || process.env.GITHUB_TOKEN;
+  return new Octokit(authToken ? { auth: authToken } : undefined);
 }
 
 function summarizeError(text: string): string {
@@ -44,8 +44,9 @@ export async function fetchGithubContext(params: {
   repo: string;
   workflowRunId: number;
   commitSha: string;
+  token?: string;
 }): Promise<GithubContext> {
-  const octokit = getOctokit();
+  const octokit = getOctokit(params.token);
 
   // 1) Failed job steps & listing jobs (best-effort)
   let failedSteps: string[] = [];
