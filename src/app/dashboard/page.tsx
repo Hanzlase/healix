@@ -513,8 +513,8 @@ export default function DashboardPage() {
                         variant="primary"
                         onClick={() => setIsSimulateOpen(true)}
                         className="mx-auto"
+                        leftIcon={<Sparkles className="w-3 h-3 text-white" />}
                       >
-                        <Sparkles className="w-3 h-3 mr-1" />
                         Simulate Test Failure
                       </Button>
                     )}
@@ -666,8 +666,8 @@ export default function DashboardPage() {
                       size="sm"
                       variant="primary"
                       onClick={() => setIsSimulateOpen(true)}
+                      leftIcon={<Sparkles className="w-3.5 h-3.5 text-white" />}
                     >
-                      <Sparkles className="w-3.5 h-3.5 mr-1.5" />
                       Simulate Test Failure
                     </Button>
                   </div>

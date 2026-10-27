@@ -9,15 +9,30 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const guestReposParam = searchParams.get('repos');
 
-    let runClause = {};
-    let failureClause = {};
-    if (session?.user && (session.user as any).id) {
-      runClause = { failure: { repository: { userId: (session.user as any).id } } };
-      failureClause = { repository: { userId: (session.user as any).id } };
+    let runClause: Record<string, unknown> = {};
+    let failureClause: Record<string, unknown> = {};
+    if (session?.user && (session.user as { id?: string }).id) {
+      const userId = (session.user as { id: string }).id;
+      runClause = { failure: { repository: { userId } } };
+      failureClause = { repository: { userId } };
     } else {
       const systemEmail = 'system@healix.local';
       const sysUser = await prisma.user.findUnique({ where: { email: systemEmail } });
-      if (!sysUser) return NextResponse.json({ totalFailures: 0, totalRuns: 0, approvedRuns: 0, rejectedRuns: 0, successRate: 0, rejectionRate: 0, avgExecutionTimeMs: 0, avgConfidence: '0.0', prsCreated: 0, categoryBreakdown: {}, riskLevelBreakdown: {} });
+      if (!sysUser) {
+        return NextResponse.json({
+          totalFailures: 0,
+          totalRuns: 0,
+          approvedRuns: 0,
+          rejectedRuns: 0,
+          successRate: 0,
+          rejectionRate: 0,
+          avgExecutionTimeMs: 0,
+          avgConfidence: '0.0',
+          prsCreated: 0,
+          categoryBreakdown: {},
+          riskLevelBreakdown: {},
+        });
+      }
 
       const repos = guestReposParam ? guestReposParam.split(',').filter(Boolean) : [];
       if (repos.length > 0) {
@@ -37,8 +52,7 @@ export async function GET(req: NextRequest) {
       avgExecTime,
       avgConfidence,
       prsCreated,
-      categoryGroups,
-      riskGroups,
+      allRuns,
     ] = await Promise.all([
       prisma.pipelineFailure.count({ where: failureClause }),
       prisma.analysisRun.count({ where: runClause }),
@@ -47,17 +61,9 @@ export async function GET(req: NextRequest) {
       prisma.analysisRun.aggregate({ where: runClause, _avg: { executionTimeMs: true } }),
       prisma.analysisRun.aggregate({ where: runClause, _avg: { confidence: true } }),
       prisma.analysisRun.count({ where: { ...runClause, prLink: { not: null } } }),
-      prisma.analysisRun.groupBy({
-        by: ['category'],
-        _count: { category: true },
+      prisma.analysisRun.findMany({
         where: runClause,
-        orderBy: { _count: { category: 'desc' } },
-      }),
-      prisma.analysisRun.groupBy({
-        by: ['reviewRiskLevel'],
-        _count: { reviewRiskLevel: true },
-        where: { ...runClause, reviewRiskLevel: { not: null } },
-        orderBy: { _count: { reviewRiskLevel: 'desc' } },
+        select: { category: true, reviewRiskLevel: true },
       }),
     ]);
 
@@ -65,13 +71,15 @@ export async function GET(req: NextRequest) {
     const rejectionRate = totalRuns > 0 ? (rejectedRuns / totalRuns) * 100 : 0;
 
     const categoryBreakdown: Record<string, number> = {};
-    for (const g of categoryGroups) {
-      if (g.category) categoryBreakdown[g.category] = g._count.category;
-    }
-
     const riskLevelBreakdown: Record<string, number> = {};
-    for (const g of riskGroups) {
-      if (g.reviewRiskLevel) riskLevelBreakdown[g.reviewRiskLevel] = g._count.reviewRiskLevel;
+
+    for (const r of allRuns) {
+      if (r.category) {
+        categoryBreakdown[r.category] = (categoryBreakdown[r.category] || 0) + 1;
+      }
+      if (r.reviewRiskLevel) {
+        riskLevelBreakdown[r.reviewRiskLevel] = (riskLevelBreakdown[r.reviewRiskLevel] || 0) + 1;
+      }
     }
 
     return NextResponse.json({

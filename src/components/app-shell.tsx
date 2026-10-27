@@ -193,9 +193,9 @@ export const AppShell: React.FC<AppShellProps> = ({
               variant="primary"
               size="sm"
               className="w-full justify-center"
+              leftIcon={<Sparkles className="w-3.5 h-3.5 text-white shrink-0" />}
             >
-              <Sparkles className="w-3.5 h-3.5 mr-1.5 text-white/90" />
-              <span>Simulate Incident</span>
+              Simulate Incident
             </Button>
           )}
 
@@ -244,10 +244,9 @@ export const AppShell: React.FC<AppShellProps> = ({
                 size="sm"
                 onClick={onRefresh}
                 disabled={isRefreshing}
-                className="text-xs"
+                leftIcon={<RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin text-[#D65A31]' : ''}`} />}
               >
-                <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${isRefreshing ? 'animate-spin text-[#D65A31]' : ''}`} />
-                <span>Refresh</span>
+                Refresh
               </Button>
             )}
 
@@ -256,10 +255,9 @@ export const AppShell: React.FC<AppShellProps> = ({
                 variant="primary"
                 size="sm"
                 onClick={onOpenSimulate}
-                className="text-xs"
+                leftIcon={<Sparkles className="w-3.5 h-3.5 text-white" />}
               >
-                <Sparkles className="w-3.5 h-3.5 mr-1.5" />
-                <span>Simulate Incident</span>
+                Simulate Incident
               </Button>
             )}
 
