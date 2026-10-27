@@ -7,18 +7,14 @@ import {
   Activity, 
   Settings, 
   Sparkles, 
-  RefreshCw, 
+  RefreshCw,
   LogOut, 
   Menu, 
   X, 
   GitBranch, 
-  ExternalLink,
-  ShieldAlert,
-  Terminal,
   Radio
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 
 interface AppShellProps {
   children: React.ReactNode;

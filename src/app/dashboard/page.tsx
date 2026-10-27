@@ -185,9 +185,18 @@ export default function DashboardPage() {
   }, []);
 
   useEffect(() => {
-    fetchAll();
-    const iv = setInterval(fetchAll, 12000);
-    return () => clearInterval(iv);
+    let active = true;
+    const init = async () => {
+      if (active) await fetchAll();
+    };
+    void init();
+    const iv = setInterval(() => {
+      void fetchAll();
+    }, 12000);
+    return () => {
+      active = false;
+      clearInterval(iv);
+    };
   }, [fetchAll]);
 
   const selected = failures.find((f) => f.id === selectedId);
