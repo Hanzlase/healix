@@ -10,7 +10,7 @@ import {
   Check, 
   CheckCircle2, 
   Cpu, 
-  Sparkles,
+  FlaskConical,
   Layers,
   Radio
 } from 'lucide-react';
@@ -278,7 +278,7 @@ export default function HomePage() {
               desc="Monitor multiple projects simultaneously with per-repository auto-PR toggles and centralized telemetry."
             />
             <FeatureCard
-              icon={<Sparkles className="w-4 h-4 text-[#94631A]" />}
+              icon={<FlaskConical className="w-4 h-4 text-[#D65A31]" />}
               title="Built-in Test Harness"
               desc="Simulate TypeScript errors, Prisma schema drift, or missing package incidents on demand to verify pipelines."
             />

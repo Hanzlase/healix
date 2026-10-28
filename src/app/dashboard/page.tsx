@@ -12,7 +12,6 @@ import {
   CheckCircle2, 
   AlertCircle, 
   Database, 
-  Zap, 
   Wrench, 
   Package, 
   Sliders, 
@@ -26,7 +25,7 @@ import {
   ChevronUp, 
   ExternalLink, 
   ShieldCheck, 
-  Sparkles,
+  Play,
   RefreshCw
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -90,7 +89,7 @@ function renderCategoryBadge(catKey: string) {
   let label = catKey || 'General';
 
   if (normalized === 'runtime') {
-    Icon = Zap;
+    Icon = Terminal;
     label = 'Runtime';
   } else if (normalized === 'build') {
     Icon = Wrench;
@@ -362,9 +361,12 @@ export default function DashboardPage() {
       onResetSession={() => {
         if (isAuthed) {
           signOut({ callbackUrl: '/' });
-        } else if (confirm('Reset guest session cache?')) {
+        } else {
           SessionManager.reset();
-          window.location.reload();
+          setSelectedRepoFilter('all');
+          setStatusFilter('all');
+          setSearchQuery('');
+          fetchAll();
         }
       }}
       activeRepo={selectedRepoFilter !== 'all' ? selectedRepoFilter : undefined}
@@ -391,7 +393,7 @@ export default function DashboardPage() {
             label="Mean Recovery Time"
             value={stats ? `${((stats.avgExecutionTimeMs || 0) / 1000).toFixed(1)}s` : '0.0s'}
             subtext="From failure webhook to fix patch"
-            icon={<Zap className="w-4 h-4 text-[#94631A]" />}
+            icon={<Clock className="w-4 h-4 text-[#94631A]" />}
             badge="Automated"
           />
           <MetricCard
@@ -513,7 +515,7 @@ export default function DashboardPage() {
                         variant="primary"
                         onClick={() => setIsSimulateOpen(true)}
                         className="mx-auto"
-                        leftIcon={<Sparkles className="w-3 h-3 text-white" />}
+                        leftIcon={<Play className="w-3 h-3 text-white fill-current" />}
                       >
                         Simulate Test Failure
                       </Button>
@@ -666,7 +668,7 @@ export default function DashboardPage() {
                       size="sm"
                       variant="primary"
                       onClick={() => setIsSimulateOpen(true)}
-                      leftIcon={<Sparkles className="w-3.5 h-3.5 text-white" />}
+                      leftIcon={<Play className="w-3.5 h-3.5 text-white fill-current" />}
                     >
                       Simulate Test Failure
                     </Button>

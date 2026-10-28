@@ -6,9 +6,11 @@ import { usePathname } from 'next/navigation';
 import { 
   Activity, 
   Settings, 
-  Sparkles, 
-  RefreshCw,
+  Play, 
+  RefreshCw, 
   LogOut, 
+  LogIn,
+  RotateCcw,
   Menu, 
   X, 
   GitBranch, 
@@ -74,10 +76,10 @@ export const AppShell: React.FC<AppShellProps> = ({
             <Button
               size="xs"
               onClick={onOpenSimulate}
-              className="bg-[#D65A31] text-white"
+              variant="primary"
+              leftIcon={<Play className="w-3 h-3 fill-current text-white" />}
             >
-              <Sparkles className="w-3 h-3 mr-1" />
-              <span>Simulate</span>
+              Simulate
             </Button>
           )}
           <button
@@ -193,31 +195,67 @@ export const AppShell: React.FC<AppShellProps> = ({
               variant="primary"
               size="sm"
               className="w-full justify-center"
-              leftIcon={<Sparkles className="w-3.5 h-3.5 text-white shrink-0" />}
+              leftIcon={<Play className="w-3.5 h-3.5 text-white fill-current shrink-0" />}
             >
               Simulate Incident
             </Button>
           )}
 
           {/* User / Session Card */}
-          <div className="p-2.5 bg-[#ECEDE7] rounded-md border border-[#DDDFD7] flex items-center justify-between">
-            <div className="min-w-0 pr-2">
-              <p className="text-[10px] font-mono uppercase tracking-wider text-[#696D65]">
-                {isAuthed ? 'Authenticated' : 'Guest Sandbox'}
-              </p>
-              <p className="text-xs font-medium text-[#20221F] truncate">
-                {userEmail || 'Local Demo Session'}
-              </p>
+          <div className="p-3 bg-[#ECEDE7] rounded-md border border-[#DDDFD7] space-y-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#26764F]" />
+                <span className="text-[10px] font-mono uppercase tracking-wider text-[#696D65] font-semibold">
+                  {isAuthed ? 'Authenticated' : 'Local Demo Session'}
+                </span>
+              </div>
+              <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-[#FFFFFF] text-[#26764F] border border-[#C3DEC8] font-medium">
+                {isAuthed ? 'Live' : 'Sandbox'}
+              </span>
             </div>
-            {onResetSession && (
-              <button
-                onClick={onResetSession}
-                className="p-1 rounded text-[#696D65] hover:text-[#B83D38] hover:bg-[#F8E9E6] transition-colors cursor-pointer"
-                title={isAuthed ? 'Sign Out' : 'Reset Guest State'}
-              >
-                <LogOut className="w-3.5 h-3.5" />
-              </button>
-            )}
+
+            <p className="text-xs font-mono font-medium text-[#20221F] truncate">
+              {userEmail || 'Local Sandbox Mode'}
+            </p>
+
+            <div className="flex items-center gap-1.5 pt-0.5">
+              {!isAuthed ? (
+                <>
+                  {onResetSession && (
+                    <button
+                      type="button"
+                      onClick={onResetSession}
+                      className="flex-1 flex items-center justify-center gap-1 py-1.5 px-2 text-[11px] font-mono rounded bg-[#FFFFFF] hover:bg-[#F5F4EF] border border-[#DDDFD7] hover:border-[#C4C7BE] text-[#4B4F47] hover:text-[#D65A31] transition-subtle cursor-pointer shadow-2xs"
+                      title="Reset demo data and clear local sandbox cache"
+                    >
+                      <RotateCcw className="w-3 h-3 text-[#696D65]" />
+                      <span>Reset</span>
+                    </button>
+                  )}
+                  <Link
+                    href="/signin"
+                    className="flex-1 flex items-center justify-center gap-1 py-1.5 px-2 text-[11px] font-mono rounded bg-[#20221F] hover:bg-[#353833] text-[#FFFFFF] transition-subtle shadow-2xs"
+                    title="Sign in with GitHub to monitor real repositories"
+                  >
+                    <LogIn className="w-3 h-3 text-[#D65A31]" />
+                    <span>Sign In</span>
+                  </Link>
+                </>
+              ) : (
+                onResetSession && (
+                  <button
+                    type="button"
+                    onClick={onResetSession}
+                    className="w-full flex items-center justify-center gap-1.5 py-1.5 px-2 text-[11px] font-mono rounded bg-[#FFFFFF] hover:bg-[#F8E9E6] border border-[#DDDFD7] hover:border-[#ECC3BE] text-[#696D65] hover:text-[#B83D38] transition-subtle cursor-pointer shadow-2xs"
+                    title="Sign Out"
+                  >
+                    <LogOut className="w-3 h-3" />
+                    <span>Sign Out</span>
+                  </button>
+                )
+              )}
+            </div>
           </div>
         </div>
       </aside>
@@ -255,7 +293,7 @@ export const AppShell: React.FC<AppShellProps> = ({
                 variant="primary"
                 size="sm"
                 onClick={onOpenSimulate}
-                leftIcon={<Sparkles className="w-3.5 h-3.5 text-white" />}
+                leftIcon={<Play className="w-3.5 h-3.5 text-white fill-current" />}
               >
                 Simulate Incident
               </Button>

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { SessionManager, SessionState } from '@/lib/session-manager';
-import { getSession } from 'next-auth/react';
+import { getSession, signOut } from 'next-auth/react';
 import { 
   Copy, 
   Check, 
@@ -18,7 +18,7 @@ import {
   Plus,
   GitBranch,
   KeyRound,
-  Sparkles,
+  CheckCircle2,
   Radio
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -225,11 +225,21 @@ export default function SettingsPage() {
     }
   };
 
+  const handleResetSession = () => {
+    if (isAuth) {
+      signOut({ callbackUrl: '/' });
+    } else {
+      SessionManager.reset();
+      window.location.href = '/dashboard';
+    }
+  };
+
   return (
     <AppShell
       userEmail={userEmail}
       isAuthed={isAuth}
       activeRepo={repos[0]?.repoName}
+      onResetSession={handleResetSession}
     >
       <div className="max-w-4xl mx-auto space-y-6">
         
@@ -494,7 +504,7 @@ export default function SettingsPage() {
           <div className="p-5 space-y-4">
             {pingStatus && (
               <div className="p-3 bg-[#E8F2EA] border border-[#C3DEC8] rounded-md text-xs font-mono text-[#26764F] flex items-center gap-2">
-                <Sparkles className="w-4 h-4 flex-shrink-0" />
+                <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
                 <span>{pingStatus}</span>
               </div>
             )}

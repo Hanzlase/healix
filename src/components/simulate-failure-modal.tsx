@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
-import { Sparkles, X, AlertTriangle, Zap, Database, Package, Play } from 'lucide-react';
+import { useState } from 'react';
+import { X, AlertTriangle, Terminal, Database, Package, Play } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 
@@ -17,7 +17,7 @@ const PRESETS = [
     id: 'auth_type_error',
     title: 'TypeScript Type Error in Auth Token Handling',
     category: 'Runtime Error',
-    icon: Zap,
+    icon: Terminal,
     description: "TypeError: Cannot read properties of undefined (reading 'sessionToken') during user auth token validation.",
     workflow: 'Test & Lint Suite',
     affectedFile: 'src/lib/auth.ts',
@@ -100,7 +100,7 @@ export const SimulateFailureModal: React.FC<SimulateModalProps> = ({
         <div className="px-5 py-3.5 border-b border-[#DDDFD7] bg-[#F5F4EF] flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <div className="w-7 h-7 rounded-md bg-[#20221F] flex items-center justify-center text-[#D65A31]">
-              <Sparkles className="w-3.5 h-3.5" />
+              <Play className="w-3.5 h-3.5 fill-current" />
             </div>
             <div>
               <h2 id="simulate-modal-title" className="text-sm font-bold text-[#20221F]">
