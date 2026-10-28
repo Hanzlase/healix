@@ -90,8 +90,13 @@ export default function SettingsPage() {
     SessionManager.set(next);
   };
 
-  const handleReset = () => {
+  const handleReset = async () => {
     if (confirm('Reset all local session data? This will clear guest caches.')) { 
+      try {
+        await fetch('/api/session/reset', { method: 'POST' });
+      } catch (e) {
+        console.error('Reset failed:', e);
+      }
       SessionManager.reset(); 
       window.location.href = '/dashboard';
     }
@@ -225,10 +230,15 @@ export default function SettingsPage() {
     }
   };
 
-  const handleResetSession = () => {
+  const handleResetSession = async () => {
     if (isAuth) {
       signOut({ callbackUrl: '/' });
     } else {
+      try {
+        await fetch('/api/session/reset', { method: 'POST' });
+      } catch (e) {
+        console.error('Reset failed:', e);
+      }
       SessionManager.reset();
       window.location.href = '/dashboard';
     }

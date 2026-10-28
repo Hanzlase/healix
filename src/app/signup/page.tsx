@@ -58,9 +58,6 @@ export default function SignUpPage() {
               <span className="text-[#D65A31] font-mono font-black">H</span>
             </div>
             <span className="text-lg font-bold tracking-tight text-[#20221F]">Healix</span>
-            <span className="text-[10px] font-mono text-[#696D65] px-1.5 py-0.2 rounded bg-[#ECEDE7] border border-[#DDDFD7]">
-              v2.0
-            </span>
           </Link>
           <h1 className="text-lg font-bold text-[#20221F]">Create Healix Account</h1>
           <p className="text-xs text-[#696D65] font-mono">

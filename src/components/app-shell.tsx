@@ -25,7 +25,8 @@ interface AppShellProps {
   onRefresh?: () => void;
   isRefreshing?: boolean;
   onOpenSimulate?: () => void;
-  onResetSession?: () => void;
+  onResetSession?: () => void | Promise<void>;
+  isResetting?: boolean;
   activeRepo?: string;
   totalIncidents?: number;
 }
@@ -38,6 +39,7 @@ export const AppShell: React.FC<AppShellProps> = ({
   isRefreshing = false,
   onOpenSimulate,
   onResetSession,
+  isResetting = false,
   activeRepo,
   totalIncidents = 0,
 }) => {
@@ -67,9 +69,6 @@ export const AppShell: React.FC<AppShellProps> = ({
             <span className="text-[#D65A31]">H</span>
           </div>
           <span className="font-bold text-sm tracking-tight text-[#20221F]">Healix</span>
-          <span className="text-[10px] font-mono text-[#696D65] px-1.5 py-0.2 rounded bg-[#ECEDE7] border border-[#DDDFD7]">
-            v2.0
-          </span>
         </Link>
         <div className="flex items-center gap-2">
           {onOpenSimulate && (
@@ -114,12 +113,7 @@ export const AppShell: React.FC<AppShellProps> = ({
               <div className="w-7 h-7 rounded-md bg-[#20221F] group-hover:bg-[#353833] transition-colors flex items-center justify-center text-white font-bold text-xs shadow-2xs">
                 <span className="text-[#D65A31] font-mono font-black">H</span>
               </div>
-              <div className="flex items-center gap-1.5">
-                <span className="font-bold text-sm tracking-tight text-[#20221F]">Healix</span>
-                <span className="text-[10px] font-mono text-[#696D65] px-1.5 py-0.2 rounded bg-[#ECEDE7] border border-[#DDDFD7]">
-                  v2.0
-                </span>
-              </div>
+              <span className="font-bold text-sm tracking-tight text-[#20221F]">Healix</span>
             </Link>
             <div className="flex items-center gap-1 text-[11px] font-mono text-[#26764F] bg-[#E8F2EA] px-2 py-0.5 rounded border border-[#C3DEC8]">
               <span className="w-1.5 h-1.5 rounded-full bg-[#26764F]" />
@@ -226,11 +220,12 @@ export const AppShell: React.FC<AppShellProps> = ({
                     <button
                       type="button"
                       onClick={onResetSession}
-                      className="flex-1 flex items-center justify-center gap-1 py-1.5 px-2 text-[11px] font-mono rounded bg-[#FFFFFF] hover:bg-[#F5F4EF] border border-[#DDDFD7] hover:border-[#C4C7BE] text-[#4B4F47] hover:text-[#D65A31] transition-subtle cursor-pointer shadow-2xs"
+                      disabled={isResetting}
+                      className="flex-1 flex items-center justify-center gap-1 py-1.5 px-2 text-[11px] font-mono rounded bg-[#FFFFFF] hover:bg-[#F5F4EF] border border-[#DDDFD7] hover:border-[#C4C7BE] text-[#4B4F47] hover:text-[#D65A31] transition-subtle cursor-pointer shadow-2xs disabled:opacity-50"
                       title="Reset demo data and clear local sandbox cache"
                     >
-                      <RotateCcw className="w-3 h-3 text-[#696D65]" />
-                      <span>Reset</span>
+                      <RotateCcw className={`w-3 h-3 ${isResetting ? 'text-[#D65A31] animate-spin' : 'text-[#696D65]'}`} />
+                      <span>{isResetting ? 'Resetting...' : 'Reset'}</span>
                     </button>
                   )}
                   <Link

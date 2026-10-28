@@ -11,8 +11,7 @@ import {
   CheckCircle2, 
   Cpu, 
   FlaskConical,
-  Layers,
-  Radio
+  Layers
 } from 'lucide-react';
 
 export default function HomePage() {
@@ -28,8 +27,8 @@ export default function HomePage() {
               <div className="w-7 h-7 rounded-md bg-[#20221F] flex items-center justify-center text-white font-bold text-xs shadow-2xs">
                 <span className="text-[#D65A31] font-mono font-black">H</span>
               </div>
-              <span className="text-sm font-bold tracking-tight text-[#20221F] flex items-center gap-1.5">
-                Healix <span className="text-[10px] font-mono font-medium text-[#696D65] bg-[#ECEDE7] border border-[#DDDFD7] px-1.5 py-0.2 rounded">v2.0</span>
+              <span className="text-sm font-bold tracking-tight text-[#20221F]">
+                Healix
               </span>
             </Link>
           </div>
@@ -63,12 +62,6 @@ export default function HomePage() {
       <section className="relative pt-28 pb-16 px-6">
         <div className="max-w-4xl mx-auto text-center space-y-5">
           
-          {/* Release Badge */}
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#ECEDE7] border border-[#DDDFD7] text-[#20221F] text-xs font-mono">
-            <Radio className="w-3 h-3 text-[#26764F]" />
-            <span>Autonomous CI/CD Remediation Engine</span>
-          </div>
-
           {/* Main Headline */}
           <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight text-[#20221F] leading-tight">
             Your failed builds shouldn&apos;t <br className="hidden sm:inline" />

@@ -131,6 +131,7 @@ export default function DashboardPage() {
   const [copiedSha, setCopiedSha] = useState(false);
   const [copiedBranch, setCopiedBranch] = useState(false);
   const [copiedLogs, setCopiedLogs] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
 
   const fetchAll = useCallback(async () => {
     try {
@@ -358,17 +359,28 @@ export default function DashboardPage() {
       onRefresh={fetchAll}
       isRefreshing={loading}
       onOpenSimulate={() => setIsSimulateOpen(true)}
-      onResetSession={() => {
+      onResetSession={async () => {
         if (isAuthed) {
           signOut({ callbackUrl: '/' });
-        } else {
+          return;
+        }
+
+        setIsResetting(true);
+        try {
+          await fetch('/api/session/reset', { method: 'POST' });
+        } catch (err) {
+          console.error('Failed to reset session on server:', err);
+        } finally {
           SessionManager.reset();
           setSelectedRepoFilter('all');
           setStatusFilter('all');
           setSearchQuery('');
-          fetchAll();
+          setSelectedId(null);
+          await fetchAll();
+          setIsResetting(false);
         }
       }}
+      isResetting={isResetting}
       activeRepo={selectedRepoFilter !== 'all' ? selectedRepoFilter : undefined}
       totalIncidents={failures.length}
     >
